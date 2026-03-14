@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BTN_PRIMARY, BTN_ICON_PRIMARY } from "@/app/lib/button-styles";
 
 const PHONE = "210-617-3670";
 const EMAIL = "messages@theUIP.com";
@@ -117,7 +118,7 @@ export function Footer() {
                 />
                 <button
                   type="submit"
-                  className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className={`shrink-0 ${BTN_PRIMARY}`}
                 >
                   Subscribe
                 </button>
@@ -134,7 +135,7 @@ export function Footer() {
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className={BTN_ICON_PRIMARY}
                     aria-label={label}
                   >
                     {label === "Facebook" && (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PATIENT_REVIEWS } from "@/app/data/patient-reviews";
+import { BTN_ICON_PRIMARY } from "@/app/lib/button-styles";
 
 const ROTATION_INTERVAL_MS = 8000;
 const FADE_DURATION_MS = 450;
@@ -46,7 +47,7 @@ export function PatientReviewCarousel() {
       <button
         type="button"
         onClick={goPrev}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-blue-600 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        className={BTN_ICON_PRIMARY}
         aria-label="Previous review"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -60,10 +61,10 @@ export function PatientReviewCarousel() {
         style={{ transitionDuration: `${FADE_DURATION_MS}ms` }}
       >
         <blockquote className="text-center">
-          <p className="mx-auto max-w-3xl text-lg text-slate-800 md:text-xl">
-            {review.quote}
+          <p className="mx-auto max-w-3xl text-lg text-white md:text-xl">
+            &ldquo;{review.quote}&rdquo;
           </p>
-          <footer className="mt-6 font-semibold text-slate-900">
+          <footer className="mt-6 font-semibold text-black">
             — {review.name}
           </footer>
         </blockquote>
@@ -71,7 +72,7 @@ export function PatientReviewCarousel() {
       <button
         type="button"
         onClick={goNext}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-blue-600 bg-white text-blue-600 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        className={BTN_ICON_PRIMARY}
         aria-label="Next review"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>

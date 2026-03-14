@@ -1,3 +1,5 @@
+import { BTN_PRIMARY_LARGE } from "@/app/lib/button-styles";
+
 const APPOINTMENT_REASONS = [
   "General Urology",
   "Prostate Cancer",
@@ -174,7 +176,7 @@ export function HomeContactSection() {
             <div className="sm:col-span-2">
               <button
                 type="submit"
-                className="rounded-xl bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className={BTN_PRIMARY_LARGE}
               >
                 SUBMIT
               </button>

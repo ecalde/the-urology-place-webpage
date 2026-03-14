@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { PatientReviewCarousel } from "./components/patient-review-carousel";
 import { HomeContactSection } from "./components/home-contact-section";
+import { BTN_PRIMARY, BTN_PRIMARY_LARGE } from "./lib/button-styles";
 
 export default function HomePage() {
   return (
@@ -33,7 +34,7 @@ export default function HomePage() {
           <div className="mt-8">
             <Link
               href="/patient-resources/contact-us"
-              className="inline-block rounded-xl bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className={`inline-block ${BTN_PRIMARY_LARGE}`}
             >
               Make Appointment
             </Link>
@@ -88,7 +89,7 @@ export default function HomePage() {
             <div className="mt-6">
               <Link
                 href="/in-office-anesthesia"
-                className="inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className={`inline-block ${BTN_PRIMARY}`}
               >
                 Learn More
               </Link>
@@ -181,7 +182,7 @@ export default function HomePage() {
       </section>
 
       {/* Rotating patient reviews + Leave a review buttons */}
-      <section className="border-t border-slate-200 bg-blue-50/80 py-16 md:py-20">
+      <section className="border-t border-slate-200 py-16 md:py-20" style={{ backgroundColor: "#849dc5" }}>
         <div className="mx-auto max-w-4xl px-6">
           <div className="min-h-[200px] md:min-h-[240px]">
             <PatientReviewCarousel />
@@ -191,7 +192,7 @@ export default function HomePage() {
               href="https://www.google.com/search?q=the+urology+place&oq=the+urolog&aqs=chrome.0.69i59l2j0j69i60l3.1593j0j7&sourceid=chrome&ie=UTF-8"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block rounded-xl border-2 border-blue-600 bg-white px-5 py-2.5 text-sm font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className={`inline-block ${BTN_PRIMARY}`}
             >
               Leave a review on Google
             </a>
@@ -199,7 +200,7 @@ export default function HomePage() {
               href="https://www.facebook.com/UrologyPlace/reviews?ref=page_internal"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block rounded-xl border-2 border-blue-600 bg-white px-5 py-2.5 text-sm font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className={`inline-block ${BTN_PRIMARY}`}
             >
               Leave a review on Facebook
             </a>
@@ -207,7 +208,7 @@ export default function HomePage() {
               href="https://www.yelp.com/biz/the-urology-place-san-antonio"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block rounded-xl border-2 border-blue-600 bg-white px-5 py-2.5 text-sm font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className={`inline-block ${BTN_PRIMARY}`}
             >
               Leave a review on Yelp
             </a>
