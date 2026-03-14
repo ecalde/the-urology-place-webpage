@@ -1,5 +1,14 @@
 # The Urology Place Website Rules
 
+## Page layout: static background, window, and sliding page
+
+Use this pattern for full-page experiences (e.g. Home, About Us, In-Office Anesthesia) so the hero feels like a fixed backdrop and the rest of the page scrolls over it.
+
+- **Static background:** The hero section uses a full-bleed background image with `backgroundAttachment: "fixed"`, `backgroundSize: "cover"`, and `backgroundPosition` (e.g. `"center"` or `"center 30%"`). This keeps the image fixed in the viewport while the user scrolls.
+- **Hero (window):** A single `<section>` with `relative`, `min-h-[Xvh]`, and inline `style={{ backgroundImage: "url(...)", backgroundAttachment: "fixed", ... }}`. Add an overlay (e.g. `absolute inset-0 bg-slate-900/45`) for text contrast. Hero content lives in a `relative z-10` container (e.g. title, subtitle).
+- **Sliding page:** All content below the hero is the “sliding page”: one or more sections with solid backgrounds (`bg-white`, `bg-slate-50/50`, etc.). Give the first of these sections rounded top corners (e.g. `rounded-t-2xl` or `rounded-t-3xl`) so it reads as a card/window sliding over the static background.
+- **Structure:** `<main>` contains (1) hero section with fixed background, then (2) content sections with borders/backgrounds that scroll over the hero. Do not wrap the sliding content in an extra full-height container; let it flow naturally so the fixed background stays visible behind the hero viewport only.
+
 ## UI / Design
 - Mobile-first responsive design
 - Clean professional medical aesthetic
