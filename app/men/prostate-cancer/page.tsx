@@ -25,17 +25,17 @@ export default function ProstateCancerMenPage() {
               Surgical treatment options using advanced robotic techniques.
             </p>
           </Link>
-          <a
-            href="#prostate-biopsies"
+          <Link
+            href="/men/prostate-cancer/prostate-biopsy"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
           >
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
-              Prostate Biopsies
+              Prostate Biopsy
             </h2>
             <p className="mt-2 text-slate-700">
-              Diagnostic biopsy approaches and what to expect.
+              Fusion biopsy, transperineal approach, and what to expect.
             </p>
-          </a>
+          </Link>
           <a
             href="#tulsa"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
@@ -64,15 +64,6 @@ export default function ProstateCancerMenPage() {
       <section className="border-t border-slate-200 bg-slate-50/50">
         <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
           <div className="space-y-12">
-            <div id="prostate-biopsies" className="scroll-mt-28">
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-                Prostate Biopsies
-              </h2>
-              <p className="mt-4 text-slate-700 leading-relaxed">
-                Details coming soon.
-              </p>
-            </div>
-
             <div id="tulsa" className="scroll-mt-28">
               <h2 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
                 TULSA for Prostate

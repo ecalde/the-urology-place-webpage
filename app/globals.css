@@ -22,3 +22,37 @@ body {
 html {
   background: #ffffff;
 }
+
+/* Prostate Biopsy — MRI section: slow crossfade between two UroNav images (no separate component file). */
+@keyframes prostate-biopsy-mri-fade-a {
+  0%,
+  40% {
+    opacity: 1;
+  }
+  50%,
+  90% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes prostate-biopsy-mri-fade-b {
+  0%,
+  40% {
+    opacity: 0;
+  }
+  50%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.prostate-biopsy-mri-crossfade-a {
+  animation: prostate-biopsy-mri-fade-a 14s ease-in-out infinite;
+}
+.prostate-biopsy-mri-crossfade-b {
+  animation: prostate-biopsy-mri-fade-b 14s ease-in-out infinite;
+}
