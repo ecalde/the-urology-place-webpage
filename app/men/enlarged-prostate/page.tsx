@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 
 export default function EnlargedProstatePage() {
@@ -13,17 +14,17 @@ export default function EnlargedProstatePage() {
         </p>
 
         <div className="mt-12 grid gap-6 md:grid-cols-2">
-          <a
-            href="#itind"
+          <Link
+            href="/men/enlarged-prostate/itind"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
           >
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
               iTind for Enlarged Prostate (BPH)
             </h2>
             <p className="mt-2 text-slate-700">
-              A minimally invasive option designed to improve urinary flow.
+              Reshape the prostatic urethra for improved flow—no permanent implant.
             </p>
-          </a>
+          </Link>
           <a
             href="#rezum"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
@@ -68,7 +69,14 @@ export default function EnlargedProstatePage() {
                 iTind for Enlarged Prostate (BPH)
               </h2>
               <p className="mt-4 text-slate-700 leading-relaxed">
-                Details coming soon.
+                Learn how iTind works, watch patient stories, and compare options on our{" "}
+                <Link
+                  href="/men/enlarged-prostate/itind"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+                >
+                  iTind page
+                </Link>
+                .
               </p>
             </div>
 
