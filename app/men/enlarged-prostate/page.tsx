@@ -47,8 +47,8 @@ export default function EnlargedProstatePage() {
               Laser-based approaches to relieve obstruction and improve symptoms.
             </p>
           </Link>
-          <a
-            href="#urolift"
+          <Link
+            href="/men/enlarged-prostate/urolift"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
           >
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
@@ -57,7 +57,7 @@ export default function EnlargedProstatePage() {
             <p className="mt-2 text-slate-700">
               A minimally invasive implant option to open the urinary channel.
             </p>
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -119,7 +119,14 @@ export default function EnlargedProstatePage() {
                 UroLift
               </h2>
               <p className="mt-4 text-slate-700 leading-relaxed">
-                Details coming soon.
+                Learn how the UroLift System works, watch patient stories, and compare options on our{" "}
+                <Link
+                  href="/men/enlarged-prostate/urolift"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+                >
+                  UroLift page
+                </Link>
+                .
               </p>
             </div>
           </div>
