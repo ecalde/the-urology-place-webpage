@@ -47,17 +47,17 @@ export default function ProstateCancerMenPage() {
               Minimally invasive treatment using ultrasound ablation.
             </p>
           </a>
-          <a
-            href="#nuclear-medicine"
+          <Link
+            href="/men/prostate-cancer/nuclear-medicine"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
           >
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
               Nuclear Medicine
             </h2>
             <p className="mt-2 text-slate-700">
-              Advanced imaging and targeted therapies used in prostate cancer care.
+              Lutetium-177 PSMA therapy (Pluvicto) and other targeted options in prostate cancer care.
             </p>
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -78,7 +78,15 @@ export default function ProstateCancerMenPage() {
                 Nuclear Medicine
               </h2>
               <p className="mt-4 text-slate-700 leading-relaxed">
-                Details coming soon.
+                Learn about Lutetium-177 PSMA therapy (Pluvicto), qualifications, follow-up care, and
+                side effects on our{" "}
+                <Link
+                  href="/men/prostate-cancer/nuclear-medicine"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+                >
+                  Nuclear Medicine page
+                </Link>
+                .
               </p>
             </div>
           </div>

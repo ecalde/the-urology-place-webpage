@@ -33,8 +33,8 @@ const NAV_ITEMS: NavItem[] = [
         children: [
           { label: "Robotic Prostatectomy", href: "/men/prostate-cancer/robotic-prostatectomy" },
           { label: "Prostate Biopsy", href: "/men/prostate-cancer/prostate-biopsy" },
-          { label: "TULSA for Prostate", href: "/men/prostate-cancer#tulsa" },
-          { label: "Nuclear Medicine", href: "/men/prostate-cancer#nuclear-medicine" },
+          { label: "TULSA for Prostate", href: "/men/prostate-cancer/tulsa-for-prostate" },
+          { label: "Nuclear Medicine", href: "/men/prostate-cancer/nuclear-medicine" },
         ],
       },
       { label: "Adult Circumcision", href: "/men/adult-circumcision" },
