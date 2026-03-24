@@ -1,18 +1,13 @@
 import Image from "next/image";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { EmsellaFaqAccordion } from "@/app/components/emsella-faq-accordion";
+import { YouTubeEmbed } from "@/app/components/youtube-embed";
 import { BTN_PRIMARY_LARGE } from "@/app/lib/button-styles";
 
 const HERO_BG =
   "/images/emsella%20for%20incontinence/photo-1488778578932-0f84d315fcae-2880w.jpg";
 
 const IMG_DIR = "/images/emsella for incontinence";
-
-const YOUTUBE_EMBED_DR_KELLA =
-  "https://www.youtube.com/embed/1n7VtgF8PG0?rel=0&modestbranding=1";
-
-const YOUTUBE_EMBED_TESTIMONIAL =
-  "https://www.youtube.com/embed/uibxWXwCRxw?rel=0&modestbranding=1";
 
 const PUBMED_HIFEM =
   "https://pubmed.ncbi.nlm.nih.gov/?term=high-intensity+focused+electromagnetic+pelvic+floor+urinary+incontinence";
@@ -94,29 +89,6 @@ const WHY_POINTS = [
   { title: "FDA Cleared Treatment", Icon: IconCalendarCheck },
   { title: "Non-Invasive", Icon: IconThumbsUp },
 ] as const;
-
-function VideoEmbed({
-  title,
-  embedUrl,
-}: {
-  title: string;
-  embedUrl: string;
-}) {
-  return (
-    <div className="overflow-hidden rounded-2xl bg-slate-900 shadow-md ring-1 ring-slate-200">
-      <div className="relative aspect-video w-full">
-        <iframe
-          className="absolute inset-0 h-full w-full"
-          src={embedUrl}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
-      </div>
-    </div>
-  );
-}
 
 export default function EmsellaForIncontinencePage() {
   return (
@@ -277,9 +249,10 @@ export default function EmsellaForIncontinencePage() {
                   benefits behind Emsella for urinary incontinence.
                 </p>
               </div>
-              <VideoEmbed
+              <YouTubeEmbed
+                videoId="1n7VtgF8PG0"
                 title="Dr. Kella on Emsella for urinary incontinence"
-                embedUrl={YOUTUBE_EMBED_DR_KELLA}
+                className="overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200"
               />
             </div>
           </div>
@@ -289,9 +262,10 @@ export default function EmsellaForIncontinencePage() {
         <div className="border-t border-slate-200 bg-white">
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-start lg:gap-14">
-              <VideoEmbed
+              <YouTubeEmbed
+                videoId="uibxWXwCRxw"
                 title="Emsella patient testimonial at The Urology Place"
-                embedUrl={YOUTUBE_EMBED_TESTIMONIAL}
+                className="overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200"
               />
               <div className="rounded-2xl bg-sky-700 px-8 py-10 text-white shadow-md md:px-10 md:py-12">
                 <h3 className="text-xl font-bold tracking-tight underline decoration-white/50 underline-offset-8 md:text-2xl">

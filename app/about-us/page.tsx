@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { YouTubeEmbed } from "@/app/components/youtube-embed";
 
 export default function AboutUsPage() {
   return (
@@ -110,13 +111,11 @@ export default function AboutUsPage() {
       <section className="border-t border-slate-200 bg-slate-50/50">
         <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
-            <div className="aspect-video w-full max-w-md shrink-0 overflow-hidden rounded-xl bg-slate-200">
-              <iframe
+            <div className="w-full max-w-md shrink-0 overflow-hidden rounded-xl bg-slate-200">
+              <YouTubeEmbed
+                videoId="H0iedrP-aLI"
                 title="Dr. Kella making a half court shot at a Dallas Mavericks game"
-                src="https://www.youtube.com/embed/H0iedrP-aLI"
-                className="h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
+                className="rounded-xl"
               />
             </div>
             <div className="min-w-0 flex-1">

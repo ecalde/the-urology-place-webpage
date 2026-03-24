@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
+import { YouTubeEmbed } from "@/app/components/youtube-embed";
 
 const HERO_BG = encodeURI(
   "/images/urinary incontinence/photo-1501527022782-000a8cd28122-2880w.jpg",
 );
-
-const YOUTUBE_EMBED =
-  "https://www.youtube.com/embed/1n7VtgF8PG0?rel=0&modestbranding=1";
 
 const MARBLE_BG =
   "linear-gradient(145deg, #ffffff 0%, #f4f4f4 42%, #ebebeb 55%, #f6f6f6 100%)";
@@ -27,23 +25,6 @@ function FeatureCheckIcon() {
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
       </svg>
     </span>
-  );
-}
-
-function VideoEmbed({ title, embedUrl }: { title: string; embedUrl: string }) {
-  return (
-    <div className="overflow-hidden rounded-2xl bg-slate-900 shadow-md ring-1 ring-slate-200">
-      <div className="relative aspect-video w-full">
-        <iframe
-          className="absolute inset-0 h-full w-full"
-          src={embedUrl}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
-      </div>
-    </div>
   );
 }
 
@@ -195,9 +176,10 @@ export function MenUrinaryIncontinencePageContent() {
                 </Link>
               </p>
             </div>
-            <VideoEmbed
+            <YouTubeEmbed
+              videoId="1n7VtgF8PG0"
               title="Dr. Naveen Kella — Emsella for urinary incontinence at The Urology Place"
-              embedUrl={YOUTUBE_EMBED}
+              className="overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200"
             />
           </div>
         </div>

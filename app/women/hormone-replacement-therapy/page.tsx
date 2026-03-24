@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { HormoneReplacementFaqAccordion } from "@/app/components/hormone-replacement-faq-accordion";
+import { YouTubeEmbed } from "@/app/components/youtube-embed";
 import { BTN_PRIMARY } from "@/app/lib/button-styles";
 
 const HERO_BG = encodeURI(
@@ -11,9 +12,6 @@ const HERO_BG = encodeURI(
 
 const IMG = (file: string) =>
   `/images/hormone replacement therapy/${file}`;
-
-const YOUTUBE_EMBED =
-  "https://www.youtube.com/embed/HmR8rqVoyd0?rel=0&modestbranding=1";
 
 const SYMPTOMS: { label: string; Icon: () => JSX.Element }[] = [
   {
@@ -74,23 +72,6 @@ function IconTarget() {
       <circle cx="12" cy="12" r="5" />
       <circle cx="12" cy="12" r="1" fill="currentColor" />
     </svg>
-  );
-}
-
-function VideoEmbed({ title, embedUrl }: { title: string; embedUrl: string }) {
-  return (
-    <div className="overflow-hidden rounded-2xl bg-slate-900 shadow-md ring-1 ring-slate-200">
-      <div className="relative aspect-video w-full">
-        <iframe
-          className="absolute inset-0 h-full w-full"
-          src={embedUrl}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
-      </div>
-    </div>
   );
 }
 
@@ -271,9 +252,10 @@ export default function HormoneReplacementTherapyPage() {
           <div className="mx-auto max-w-6xl">
             <div className="grid gap-0 overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200/80 lg:grid-cols-2">
               <div className="bg-white p-4 sm:p-6">
-                <VideoEmbed
+                <YouTubeEmbed
+                  videoId="HmR8rqVoyd0"
                   title="Bioidentical Pellets—Hormone Replacement Therapy in San Antonio, TX"
-                  embedUrl={YOUTUBE_EMBED}
+                  className="overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200"
                 />
               </div>
               <div className="flex flex-col justify-center bg-sky-700 px-8 py-10 text-white sm:px-10 md:py-12">

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { YouTubeEmbed } from "@/app/components/youtube-embed";
 
 const WHEN_TO_SEE_DOCTOR = [
   {
@@ -256,16 +257,11 @@ export function HematuriaPageContent() {
               </div>
 
               <div className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-                <div className="relative aspect-video overflow-hidden rounded-xl bg-slate-900">
-                  <iframe
-                    className="absolute inset-0 h-full w-full"
-                    src="https://www.youtube.com/embed/_g_1PlfJ0_M?rel=0&modestbranding=1"
-                    title="Hematuria testing video"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  />
-                </div>
+                <YouTubeEmbed
+                  videoId="_g_1PlfJ0_M"
+                  title="Hematuria testing video"
+                  className="overflow-hidden rounded-xl"
+                />
               </div>
             </div>
           </div>

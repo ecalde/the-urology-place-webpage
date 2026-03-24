@@ -43,6 +43,13 @@ All non-navbar site buttons must match the **navbar Contact button** look so the
 - Maintain clear folder structure
 - Keep logic simple and maintainable
 
+### YouTube embeds (player only)
+
+- **Component:** All embedded YouTube **players** on the site must use `YouTubeEmbed` from `@/app/components/youtube-embed.tsx`. Do not paste raw `<iframe>` markup for YouTube on new pages.
+- **Props:** Pass `videoId` and a short, descriptive `title` for accessibility. Optional `className` wraps the aspect-ratio container (e.g. `rounded-2xl shadow-md ring-1 ring-slate-200`). Optional `embedSearchParams` adjusts the query string; default is `rel=0&modestbranding=1` (pass `""` if you need no params).
+- **Links vs embeds:** Links to YouTube channels or watch URLs stay normal `<a>` / `next/link`. Only **inline video players** use `YouTubeEmbed`.
+- **Non-YouTube iframes:** Maps and other providers stay as their own iframes (e.g. Google Maps in `footer.tsx`).
+
 ## Performance
 - Optimize images
 - Avoid unnecessary client-side JS

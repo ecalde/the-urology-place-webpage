@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { VasectomyFaqAccordion } from "@/app/components/vasectomy-faq-accordion";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
+import { YouTubeEmbed } from "@/app/components/youtube-embed";
 import { VasectomyTabs } from "@/app/men/vasectomy/vasectomy-tabs";
 import { BTN_SECONDARY } from "@/app/lib/button-styles";
 
@@ -11,34 +12,12 @@ const HERO_BG = encodeURI(
 
 const IMG = (name: string) => `/images/vasectomy/${name}`;
 
-const OUR_PROCESS_VIDEO_1 =
-  "https://www.youtube.com/embed/bvwm3OhM0zE?rel=0&modestbranding=1";
-const OUR_PROCESS_VIDEO_2 =
-  "https://www.youtube.com/embed/b4AyNyrN7rU?rel=0&modestbranding=1";
-
 const FEATURES = [
   "Less than 1% failure rate",
   "No scalpel means less bleeding, risk of infection and pain",
   "A single opening for the procedure",
   "Nitrous Gas available to ease anxiety and discomfort",
 ] as const;
-
-function VideoEmbed({ title, embedUrl }: { title: string; embedUrl: string }) {
-  return (
-    <div className="overflow-hidden rounded-2xl bg-slate-900 shadow-md ring-1 ring-slate-200">
-      <div className="relative aspect-video w-full">
-        <iframe
-          className="absolute inset-0 h-full w-full"
-          src={embedUrl}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
-      </div>
-    </div>
-  );
-}
 
 function FeatureCheckIcon() {
   return (
@@ -123,13 +102,15 @@ export function VasectomyPageContent() {
               age-restricted video shows an actual vasectomy.
             </p>
             <div className="mt-12 grid gap-8 lg:grid-cols-2">
-              <VideoEmbed
+              <YouTubeEmbed
+                videoId="bvwm3OhM0zE"
                 title="Dr. Naveen Kella — vasectomy information at The Urology Place"
-                embedUrl={OUR_PROCESS_VIDEO_1}
+                className="overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200"
               />
-              <VideoEmbed
+              <YouTubeEmbed
+                videoId="b4AyNyrN7rU"
                 title="Vasectomy procedure (age-restricted content may require viewing on YouTube)"
-                embedUrl={OUR_PROCESS_VIDEO_2}
+                className="overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200"
               />
             </div>
           </div>

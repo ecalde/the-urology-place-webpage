@@ -1,4 +1,5 @@
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
+import { YouTubeEmbed } from "@/app/components/youtube-embed";
 
 const PHONE = "210-617-3670";
 const EMAIL = "messages@theupi.com";
@@ -163,16 +164,11 @@ export default function ContactUsPage() {
               </div>
 
               <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden">
-                <div className="relative aspect-video bg-slate-900">
-                  <iframe
-                    className="absolute inset-0 h-full w-full"
-                    src="https://www.youtube.com/embed/H6AOCeoJnNU?rel=0&modestbranding=1"
-                    title="Directions to The Urology Place"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  />
-                </div>
+                <YouTubeEmbed
+                  videoId="H6AOCeoJnNU"
+                  title="Directions to The Urology Place"
+                  className="rounded-none"
+                />
               </div>
             </div>
           </div>
