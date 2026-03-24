@@ -25,17 +25,17 @@ export default function EnlargedProstatePage() {
               Reshape the prostatic urethra for improved flow—no permanent implant.
             </p>
           </Link>
-          <a
-            href="#rezum"
+          <Link
+            href="/men/enlarged-prostate/rezum"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
           >
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
               Rezūm
             </h2>
             <p className="mt-2 text-slate-700">
-              A water vapor therapy option for select BPH patients.
+              Water vapor therapy for BPH — in-office treatment with lasting symptom relief.
             </p>
-          </a>
+          </Link>
           <a
             href="#laser-treatment"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
@@ -85,7 +85,15 @@ export default function EnlargedProstatePage() {
                 Rezūm
               </h2>
               <p className="mt-4 text-slate-700 leading-relaxed">
-                Details coming soon.
+                Learn about water vapor therapy, Center of Excellence designation, and how Rezūm
+                compares to other options on our{" "}
+                <Link
+                  href="/men/enlarged-prostate/rezum"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+                >
+                  Rezūm page
+                </Link>
+                .
               </p>
             </div>
 
