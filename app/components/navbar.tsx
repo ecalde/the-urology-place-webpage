@@ -44,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
         children: [
           { label: "iTind for Enlarged Prostate (BPH)", href: "/men/enlarged-prostate/itind" },
           { label: "Rezūm", href: "/men/enlarged-prostate/rezum" },
-          { label: "Enlarged Prostate Laser Treatment", href: "/men/enlarged-prostate#laser-treatment" },
+          { label: "Enlarged Prostate Laser Treatment", href: "/men/enlarged-prostate/laser-treatment" },
           { label: "UroLift", href: "/men/enlarged-prostate#urolift" },
         ],
       },

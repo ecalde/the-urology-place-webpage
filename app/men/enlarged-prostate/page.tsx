@@ -36,8 +36,8 @@ export default function EnlargedProstatePage() {
               Water vapor therapy for BPH — in-office treatment with lasting symptom relief.
             </p>
           </Link>
-          <a
-            href="#laser-treatment"
+          <Link
+            href="/men/enlarged-prostate/laser-treatment"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
           >
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
@@ -46,7 +46,7 @@ export default function EnlargedProstatePage() {
             <p className="mt-2 text-slate-700">
               Laser-based approaches to relieve obstruction and improve symptoms.
             </p>
-          </a>
+          </Link>
           <a
             href="#urolift"
             className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50/70"
@@ -102,7 +102,15 @@ export default function EnlargedProstatePage() {
                 Enlarged Prostate Laser Treatment
               </h2>
               <p className="mt-4 text-slate-700 leading-relaxed">
-                Details coming soon.
+                Greenlight and Thulium laser photoselective vaporization for BPH — learn about benefits,
+                safety, and how laser compares to TURP and other options on our{" "}
+                <Link
+                  href="/men/enlarged-prostate/laser-treatment"
+                  className="font-semibold text-blue-600 underline-offset-2 hover:underline"
+                >
+                  laser treatment page
+                </Link>
+                .
               </p>
             </div>
 
