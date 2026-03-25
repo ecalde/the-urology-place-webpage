@@ -1,30 +1,12 @@
 import Image from "next/image";
+import { BPH_STAGE_ILLUSTRATIONS } from "@/app/data/bph-stage-illustrations";
 
 const HERO_BG =
   "/images/bph%20studies/pexels-photo-4194857-2880w.jpeg";
 
-const BPH_STAGES = [
-  {
-    label: "Normal",
-    src: "/images/bph studies/BPH+Normal-1000h.jpg",
-    alt: "Cross-section illustration of a normal prostate and open urethra",
-  },
-  {
-    label: "Stage 1 BPH",
-    src: "/images/bph studies/Stage+1+BPH-1000h.jpg",
-    alt: "Cross-section illustration of stage 1 benign prostatic hyperplasia",
-  },
-  {
-    label: "Stage 2 BPH",
-    src: "/images/bph studies/Stage+2+BPH-1000h.jpg",
-    alt: "Cross-section illustration of stage 2 benign prostatic hyperplasia",
-  },
-  {
-    label: "Stage 3 BPH",
-    src: "/images/bph studies/Stage+3+BPH-1000h.jpg",
-    alt: "Cross-section illustration of stage 3 benign prostatic hyperplasia",
-  },
-] as const;
+function bphStageImageSrc(path: string) {
+  return encodeURI(path).replace(/\+/g, "%2B");
+}
 
 const STUDY_SECTIONS = [
   {
@@ -87,14 +69,14 @@ export default function BphStudiesPage() {
         <div className="border-b border-slate-200 bg-white">
           <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-              {BPH_STAGES.map((stage) => (
+              {BPH_STAGE_ILLUSTRATIONS.map((stage) => (
                 <figure
                   key={stage.label}
                   className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm"
                 >
                   <div className="relative aspect-[3/5] w-full bg-slate-900">
                     <Image
-                      src={stage.src}
+                      src={bphStageImageSrc(stage.src)}
                       alt={stage.alt}
                       fill
                       sizes="(min-width: 1024px) 240px, (min-width: 640px) 45vw, 50vw"
