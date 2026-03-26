@@ -1,4 +1,4 @@
-import authorType from './authorType.js'
-import postType from './postType.js'
+import authorType from './authorType'
+import postType from './postType'
 
 export const schemaTypes = [authorType, postType]

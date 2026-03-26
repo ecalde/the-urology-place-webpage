@@ -20,6 +20,24 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Sanity Studio (embedded)
+
+Embedded [Sanity Studio](https://www.sanity.io/) is available at **`/studio`** (e.g. [http://localhost:3000/studio](http://localhost:3000/studio)).
+
+**Dependency tree:** Use a **single** install from the **repository root** only. The Next.js app and embedded Studio share config under `studio/` (`sanity.config.ts`, schemas), but **the root `package.json` and root `node_modules` are the source of truth** for packages.
+
+**Do not** run `npm install` (or `yarn` / `pnpm`) **inside `studio/`**. If `studio/node_modules` exists, the bundler can load duplicate `styled-components` or `@sanity/ui` copies and the embedded `/studio` route may crash with theme errors (e.g. `theme.sanity is undefined` or “The structure tool crashed”).
+
+**Recovery if `/studio` fails with a Sanity theme or styled-components error:**
+
+1. Delete `studio/node_modules`
+2. Delete `studio/package-lock.json` (if present)
+3. Delete `.next`
+4. Run `npm install` from the **project root**
+5. Run `npm run dev` again
+
+The standalone Studio in `studio/` uses the same config as the embedded Studio; keep all package installs at the root so dependencies stay unified.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
