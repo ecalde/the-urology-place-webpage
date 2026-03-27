@@ -310,7 +310,7 @@ export function BladderCancerPageContent({
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-24">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Bladder Cancer"
+              pageName="Bladder Cancer"
               serviceName="Bladder Cancer"
               category={category}
               sourcePath={sourcePath}

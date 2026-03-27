@@ -238,7 +238,7 @@ export default function CounselingAndInjectionsPage() {
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Weight Loss"
+              pageName="Weight Loss"
               serviceName="Weight Loss"
               category="Weight Loss"
               sourcePath="/weight-loss/counseling-and-injections"

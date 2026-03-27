@@ -255,7 +255,7 @@ export function EnlargedProstatePageContent() {
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Enlarged Prostate"
+              pageName="Enlarged Prostate"
               serviceName="Enlarged Prostate (BPH)"
               category="Men"
               sourcePath="/men/enlarged-prostate"

@@ -253,7 +253,7 @@ export function KidneyStonesPageContent({
           <div className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Kidney Stones"
+              pageName="Kidney Stones"
               serviceName="Kidney Stones"
               category={category}
               sourcePath={sourcePath}

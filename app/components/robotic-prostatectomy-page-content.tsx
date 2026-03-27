@@ -330,7 +330,7 @@ export function RoboticProstatectomyPageContent() {
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Robotic Prostatectomy"
+              pageName="Robotic Prostatectomy"
               serviceName="Robotic Prostatectomy"
               category="Men > Prostate Cancer"
               sourcePath="/men/prostate-cancer/robotic-prostatectomy"

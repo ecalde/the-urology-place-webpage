@@ -323,7 +323,7 @@ export default function EmsellaForIncontinencePage() {
         <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
           <ContactFormTemplate
             variant="embedded"
-            title="Contact Us For Emsella for Incontinence"
+            pageName="Emsella for Incontinence"
             serviceName="Emsella for Incontinence"
             category="Women"
             sourcePath="/women/emsella-for-incontinence"

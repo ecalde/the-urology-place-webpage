@@ -484,7 +484,7 @@ export function LowTestosteronePageContent() {
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Low Testosterone"
+              pageName="Low Testosterone"
               serviceName="Low Testosterone"
               category="Men"
               sourcePath="/men/low-testosterone"

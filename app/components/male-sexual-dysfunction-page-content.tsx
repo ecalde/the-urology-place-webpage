@@ -259,7 +259,7 @@ export function MaleSexualDysfunctionPageContent() {
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Male Sexual Dysfunction"
+              pageName="Male Sexual Dysfunction"
               serviceName="Male Sexual Dysfunction"
               category="Men"
               sourcePath="/men/male-sexual-dysfunction"

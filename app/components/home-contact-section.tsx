@@ -1,4 +1,4 @@
-import { RequestAppointmentForm } from "@/app/components/request-appointment-form";
+import { ContactFormTemplate } from "@/app/components/contact-form-template";
 
 export function HomeContactSection() {
   return (
@@ -10,7 +10,14 @@ export function HomeContactSection() {
         <h2 id="contact-heading" className="sr-only">
           Request an appointment and contact information
         </h2>
-        <RequestAppointmentForm />
+        <ContactFormTemplate
+          variant="embedded"
+          pageName="Home"
+          serviceName="Home Page Inquiry"
+          category="Home"
+          sourcePath="/"
+          idPrefix="home-contact"
+        />
       </div>
     </section>
   );

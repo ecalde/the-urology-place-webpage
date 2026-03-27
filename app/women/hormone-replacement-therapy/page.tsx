@@ -302,7 +302,7 @@ export default function HormoneReplacementTherapyPage() {
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Hormone Replacement Therapy"
+              pageName="Hormone Replacement Therapy"
               serviceName="Hormone Replacement Therapy"
               category="Women"
               sourcePath="/women/hormone-replacement-therapy"

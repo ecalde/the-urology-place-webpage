@@ -9,7 +9,7 @@ export default function HematuriaWomenPage() {
         <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
           <ContactFormTemplate
             variant="embedded"
-            title="Contact Us For Hematuria"
+            pageName="Hematuria"
             serviceName="Hematuria"
             category="Women"
             sourcePath="/women/hematuria"

@@ -17,9 +17,10 @@
     "next": "16.1.6",
     "next-sanity": "^12.1.6",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-google-recaptcha": "^3.1.0",
     "sanity": "^5.18.0",
-    "styled-components": "6.3.12",
-    "react-dom": "19.2.3"
+    "styled-components": "6.3.12"
   },
   "overrides": {
     "styled-components": "6.3.12"
@@ -29,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-google-recaptcha": "^2.1.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",

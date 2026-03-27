@@ -141,7 +141,7 @@ export function ProstateCancerPageContent() {
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
             <ContactFormTemplate
               variant="embedded"
-              title="Contact Us For Prostate Cancer"
+              pageName="Prostate Cancer"
               serviceName="Prostate Cancer"
               category="Men"
               sourcePath="/men/prostate-cancer"

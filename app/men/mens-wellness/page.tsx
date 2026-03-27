@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { RequestAppointmentForm } from "@/app/components/request-appointment-form";
+import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { MensWellnessTabs } from "./mens-wellness-tabs";
 
 const DIFFERENTIATORS = [
@@ -89,10 +89,17 @@ export default function MensWellnessPage() {
           </div>
         </section>
 
-        {/* Request An Appointment — shared component */}
+        {/* Contact — site-wide form */}
         <section className="border-t border-slate-200 bg-slate-50/50">
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
-            <RequestAppointmentForm idPrefix="mens-wellness" />
+            <ContactFormTemplate
+              variant="embedded"
+              pageName="Men's Wellness"
+              serviceName="Men's Wellness"
+              category="Men"
+              sourcePath="/men/mens-wellness"
+              idPrefix="mens-wellness"
+            />
           </div>
         </section>
       </section>

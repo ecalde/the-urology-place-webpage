@@ -1,10 +1,18 @@
-import { BTN_PRIMARY_LARGE } from "@/app/lib/button-styles";
-
-const REACH_OPTIONS = ["Phone", "Email", "Text"] as const;
+import { ContactFormFields } from "@/app/components/contact-form-fields";
+import { getDefaultAppointmentReasonForPage } from "@/app/lib/contact-form-defaults";
 
 export type ContactFormTemplateProps = {
-  /** Visible heading, e.g. "Contact Us For Kidney Stones" */
-  title: string;
+  /**
+   * Display name for the current page or service (e.g. "Kidney Stones", "Men's Wellness").
+   * Used for the default appointment reason and for the heading `Contact Us For {pageName}`
+   * unless `headingOverride` is set.
+   */
+  pageName: string;
+  /**
+   * Optional full heading when it should not be `Contact Us For {pageName}`
+   * (e.g. the main Contact Us page uses "Contact Us" only).
+   */
+  headingOverride?: string;
   /** Hidden metadata */
   serviceName: string;
   /** Hidden metadata (e.g. "Men", "Women", "Men > Prostate Cancer") */
@@ -22,22 +30,24 @@ export type ContactFormTemplateProps = {
 };
 
 export function ContactFormTemplate({
-  title,
+  pageName,
+  headingOverride,
   serviceName,
   category,
   sourcePath,
   variant = "page",
   idPrefix,
 }: ContactFormTemplateProps) {
-  const id = (suffix: string) => (idPrefix ? `${idPrefix}-${suffix}` : suffix);
+  const heading = headingOverride ?? `Contact Us For ${pageName}`;
+  const defaultAppointmentReason = getDefaultAppointmentReasonForPage(pageName);
 
   const content = (
     <div>
       {variant === "page" ? (
-        <h1 className="text-4xl font-bold tracking-tight md:text-5xl">{title}</h1>
+        <h1 className="text-4xl font-bold tracking-tight md:text-5xl">{heading}</h1>
       ) : (
         <h2 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
-          {title}
+          {heading}
         </h2>
       )}
       <p className="mt-4 max-w-2xl text-slate-700 leading-relaxed">
@@ -45,118 +55,14 @@ export function ContactFormTemplate({
         shortly.
       </p>
 
-      <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 md:p-8">
-        <form className="grid gap-6 sm:grid-cols-2" action="#" method="post">
-          <input type="hidden" name="serviceName" value={serviceName} />
-          <input type="hidden" name="category" value={category} />
-          <input type="hidden" name="sourcePath" value={sourcePath} />
-
-          <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor={id("contact-first-name")}
-                className="block text-sm font-medium text-slate-700"
-              >
-                First Name
-              </label>
-              <input
-                id={id("contact-first-name")}
-                name="firstName"
-                type="text"
-                className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50/80 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor={id("contact-last-name")}
-                className="block text-sm font-medium text-slate-700"
-              >
-                Last Name
-              </label>
-              <input
-                id={id("contact-last-name")}
-                name="lastName"
-                type="text"
-                className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50/80 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor={id("contact-phone")}
-              className="block text-sm font-medium text-slate-700"
-            >
-              Phone Number
-            </label>
-            <input
-              id={id("contact-phone")}
-              name="phone"
-              type="tel"
-              className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50/80 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor={id("contact-email")}
-              className="block text-sm font-medium text-slate-700"
-            >
-              Email
-            </label>
-            <input
-              id={id("contact-email")}
-              name="email"
-              type="email"
-              className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50/80 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label
-              htmlFor={id("contact-reach")}
-              className="block text-sm font-medium text-slate-700"
-            >
-              Best Way to Reach Me
-            </label>
-            <select
-              id={id("contact-reach")}
-              name="bestWayToReach"
-              className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-50/80 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {REACH_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="sm:col-span-2">
-            <label
-              htmlFor={id("contact-message")}
-              className="block text-sm font-medium text-slate-700"
-            >
-              Message
-            </label>
-            <textarea
-              id={id("contact-message")}
-              name="message"
-              rows={6}
-              className="mt-1 block w-full resize-y min-h-[140px] rounded-lg border border-slate-300 bg-slate-50/80 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <button type="submit" className={BTN_PRIMARY_LARGE}>
-              SUBMIT
-            </button>
-            <p className="mt-3 text-sm text-slate-600">
-              This form is for non-emergency questions only. If you are
-              experiencing a medical emergency, call 911.
-            </p>
-          </div>
-        </form>
+      <div className="mt-10">
+        <ContactFormFields
+          idPrefix={idPrefix}
+          defaultAppointmentReason={defaultAppointmentReason}
+          serviceName={serviceName}
+          category={category}
+          sourcePath={sourcePath}
+        />
       </div>
     </div>
   );
@@ -169,4 +75,3 @@ export function ContactFormTemplate({
     </main>
   );
 }
-
