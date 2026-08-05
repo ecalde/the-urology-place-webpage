@@ -24,6 +24,12 @@ const nextConfig: NextConfig = {
         destination: "/clinical-research/urinary-incontinence-studies",
         permanent: true,
       },
+      {
+        // Vanity URL for PAE (case-insensitive: /PAE, /pae, etc.)
+        source: "/:pae([Pp][Aa][Ee])",
+        destination: "/men/enlarged-prostate/prostatic-artery-embolization",
+        permanent: true,
+      },
     ];
   },
   compiler: {
