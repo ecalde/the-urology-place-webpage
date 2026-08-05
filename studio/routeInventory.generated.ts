@@ -655,6 +655,11 @@ export const routeInventory: RouteInventoryEntry[] = [
 /** Redirects declared in next.config.ts. */
 export const redirects: RedirectEntry[] = [
   {
+    "source": "/:pae([Pp][Aa][Ee])",
+    "destination": "/men/enlarged-prostate/prostatic-artery-embolization",
+    "permanent": true
+  },
+  {
     "source": "/clinical-research/overactive-bladder",
     "destination": "/clinical-research/urinary-incontinence-studies",
     "permanent": true
