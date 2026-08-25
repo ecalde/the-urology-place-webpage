@@ -80,12 +80,14 @@ export const PROSTATE_CANCER_STUDIES: ClinicalStudy[] = [
     imageAlt: "Medical illustration representing prostate cancer therapy research",
   },
   {
-    name: "Artera",
-    status: "Coming Soon",
+    name: "DIRECT-AI",
+    fullName:
+      "Decision Impact Study for Evaluation of Clinical Treatment with ArteraAI in Prostate Cancer",
+    status: "Active and Enrolling",
     description:
-      "The Artera study will evaluate precision medicine tools designed to help personalize treatment decisions for men with prostate cancer. Researchers hope this approach will allow therapies to be tailored more effectively to each patient.",
+      "The DIRECT-AI non-interventional observational registry follows patients receiving the ArteraAI Prostate Test as part of their standard care. Data collected will provide insights into how AI-powered prognostic and predictive information is used in clinical decision-making, including the impact of results on shifts in treatment choices and physician confidence.",
     image: IMG("cellular-microscopic-dna-2880w.jpg"),
     imageAlt:
-      "Microscopic DNA image representing precision medicine prostate cancer research",
+      "Microscopic DNA image representing the DIRECT-AI precision medicine prostate cancer study",
   },
 ];

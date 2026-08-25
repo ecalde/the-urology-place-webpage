@@ -5,6 +5,7 @@ export type ClinicalStudyStatus =
 
 export type ClinicalStudy = {
   name: string;
+  fullName?: string;
   status: ClinicalStudyStatus;
   description: string;
   nct?: string;

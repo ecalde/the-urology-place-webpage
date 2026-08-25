@@ -128,6 +128,11 @@ export function ClinicalStudiesList({
               <h3 className="text-2xl font-bold tracking-tight text-slate-900">
                 {study.name}
               </h3>
+              {study.fullName ? (
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                  {study.fullName}
+                </p>
+              ) : null}
               <p
                 className={`mt-3 text-sm font-semibold uppercase tracking-[0.14em] ${clinicalStudyStatusColorClass(study.status)}`}
               >
