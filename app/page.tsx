@@ -7,6 +7,7 @@ import {
 import { HomePrivacyBanner } from "./components/home-privacy-banner";
 import { PatientReviewCarousel } from "./components/patient-review-carousel";
 import { HomeContactSection } from "./components/home-contact-section";
+import { FeaturedSanAntonioMedicineArticle } from "./components/featured-san-antonio-medicine-article";
 import { BTN_MAKE_APPOINTMENT_HERO, BTN_PRIMARY } from "./lib/button-styles";
 import {
   HERO_IMAGE_SECTION,
@@ -125,6 +126,8 @@ export default async function HomePage() {
           Our mission is to provide a warm and welcoming environment for experienced care. We thank you for trusting us with your urological and overall health.
         </p>
       </section>
+
+      <FeaturedSanAntonioMedicineArticle />
 
       {/* What&apos;s New — Sanity-driven card slider */}
       <section className="border-t border-slate-200 bg-slate-50/50">

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
+import { FeaturedSanAntonioMedicineArticle } from "@/app/components/featured-san-antonio-medicine-article";
 import { BTN_MAKE_APPOINTMENT_HERO } from "@/app/lib/button-styles";
 import { MoreInformationCardGrid } from "@/app/components/more-information-card-grid";
 import { PROSTATE_CANCER_MORE_INFORMATION_ITEMS } from "@/app/data/prostate-cancer-more-information-items";
@@ -148,7 +149,10 @@ export function ProstateCancerPageContent() {
           </div>
         </section>
 
+        <FeaturedSanAntonioMedicineArticle />
+
         <MoreInformationCardGrid
+          className="border-t border-slate-200"
           items={PROSTATE_CANCER_MORE_INFORMATION_ITEMS.filter(
             (item) => item.label !== "PSA, MRI and Gleason Score",
           )}
