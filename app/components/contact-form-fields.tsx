@@ -14,6 +14,7 @@ import {
   type ClientValidatedField,
   collapseWhitespace,
   normalizeEmail,
+  readSubmissionPageUtms,
   validateContactForClient,
   type RawContactBody,
 } from "@/app/lib/contact-validation";
@@ -235,6 +236,9 @@ export function ContactFormFields({
 
     setSubmitStatus("loading");
 
+    // Submission-page UTMs only. Earlier landing-page UTMs are not stored.
+    const submissionUtms = readSubmissionPageUtms(window.location.search);
+
     const payload = {
       firstName,
       lastName,
@@ -249,6 +253,9 @@ export function ContactFormFields({
       smsConsent,
       pageName,
       sourcePath,
+      utmSource: submissionUtms.utmSource,
+      utmMedium: submissionUtms.utmMedium,
+      utmCampaign: submissionUtms.utmCampaign,
       serviceName,
       category,
       website: String(fd.get("website") ?? "").trim(),

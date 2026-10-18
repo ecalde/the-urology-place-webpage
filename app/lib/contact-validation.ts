@@ -26,6 +26,15 @@ export type RawContactBody = {
   smsConsent?: unknown;
   pageName?: unknown;
   sourcePath?: unknown;
+  /** Submission-page query values only. Other query keys are never accepted. */
+  utmSource?: unknown;
+  utmMedium?: unknown;
+  utmCampaign?: unknown;
+  /**
+   * Present on some page payloads for display context.
+   * Intentionally not part of NormalizedContact or the CRM DTO:
+   * pageName and sourcePath already identify the public page.
+   */
   serviceName?: unknown;
   category?: unknown;
   /** Honeypot — must be empty; checked in the API before validation. */
@@ -46,6 +55,9 @@ export type NormalizedContact = {
   smsConsent: "yes" | "no";
   pageName: string;
   sourcePath: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
 };
 
 /** Max lengths — enforced on server; mirror on inputs with maxLength where applicable */
@@ -59,6 +71,9 @@ export const CONTACT_FIELD_LIMITS = {
   message: 1000,
   pageName: 200,
   sourcePath: 500,
+  utmSource: 200,
+  utmMedium: 200,
+  utmCampaign: 200,
   serviceName: 200,
   category: 200,
 } as const;
@@ -139,6 +154,85 @@ export function validatePhone(raw: string): { ok: true; value: string } | { ok: 
 
 export function normalizeEmail(raw: string): string {
   return collapseWhitespace(str(raw).toLowerCase());
+}
+
+/**
+ * Readable public page label. A URL, path, query, or fragment is not a page name.
+ */
+function sanitizePublicPageName(raw: unknown): string {
+  const value = collapseWhitespace(
+    str(raw).slice(0, CONTACT_FIELD_LIMITS.pageName),
+  );
+  if (!value) return "(not provided)";
+  if (
+    value.includes("://") ||
+    value.includes("?") ||
+    value.includes("#") ||
+    value.startsWith("/")
+  ) {
+    return "(not provided)";
+  }
+  return value;
+}
+
+/**
+ * Pathname only. Scheme, host, query, and fragment are removed so tracking
+ * parameters and secrets cannot be stored in source_path.
+ * Current pages already pass a clean pathname; those values stay the same.
+ */
+function sanitizePublicSourcePath(raw: unknown): string {
+  const collapsed = collapseWhitespace(str(raw).slice(0, 2000));
+  if (!collapsed) return "(not provided)";
+
+  let path = collapsed;
+
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(path)) {
+    try {
+      path = new URL(path).pathname || "/";
+    } catch {
+      return "(not provided)";
+    }
+  } else if (/%[0-9a-fA-F]{2}/.test(path)) {
+    try {
+      path = decodeURIComponent(path);
+    } catch {
+      return "(not provided)";
+    }
+  }
+
+  const delimiter = path.search(/[?#]/);
+  if (delimiter !== -1) {
+    path = path.slice(0, delimiter);
+  }
+
+  path = path.trim();
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    return "(not provided)";
+  }
+
+  return path.slice(0, CONTACT_FIELD_LIMITS.sourcePath);
+}
+
+function sanitizeUtmValue(raw: unknown, maxLen: number): string {
+  if (typeof raw !== "string") return "";
+  return collapseWhitespace(str(raw)).slice(0, maxLen);
+}
+
+/**
+ * Reads only utm_source, utm_medium, and utm_campaign from a page query string.
+ * This is the submission page, not an earlier landing page.
+ */
+export function readSubmissionPageUtms(search: string): {
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+} {
+  const params = new URLSearchParams(typeof search === "string" ? search : "");
+  return {
+    utmSource: params.get("utm_source") ?? "",
+    utmMedium: params.get("utm_medium") ?? "",
+    utmCampaign: params.get("utm_campaign") ?? "",
+  };
 }
 
 export function validateEmail(raw: string): { ok: true; value: string } | { ok: false; reason: string } {
@@ -281,11 +375,20 @@ export function validateAndNormalizeContact(
     });
   }
 
-  let pageName = collapseWhitespace(str(input.pageName).slice(0, CONTACT_FIELD_LIMITS.pageName));
-  if (!pageName) pageName = "(not provided)";
-
-  let sourcePath = collapseWhitespace(str(input.sourcePath).slice(0, CONTACT_FIELD_LIMITS.sourcePath));
-  if (!sourcePath) sourcePath = "(not provided)";
+  const pageName = sanitizePublicPageName(input.pageName);
+  const sourcePath = sanitizePublicSourcePath(input.sourcePath);
+  const utmSource = sanitizeUtmValue(
+    input.utmSource,
+    CONTACT_FIELD_LIMITS.utmSource,
+  );
+  const utmMedium = sanitizeUtmValue(
+    input.utmMedium,
+    CONTACT_FIELD_LIMITS.utmMedium,
+  );
+  const utmCampaign = sanitizeUtmValue(
+    input.utmCampaign,
+    CONTACT_FIELD_LIMITS.utmCampaign,
+  );
 
   if (errors.length > 0) {
     return { success: false, errors };
@@ -312,6 +415,9 @@ export function validateAndNormalizeContact(
     smsConsent: smsConsent as "yes" | "no",
     pageName,
     sourcePath,
+    utmSource,
+    utmMedium,
+    utmCampaign,
   };
 
   return { success: true, data };

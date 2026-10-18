@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f7f7f8;
+        color: #202124;
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif;
+      }
+
+      .dialog {
+        padding: 20px;
+      }
+
+      .header {
+        margin-bottom: 16px;
+      }
+
+      .patient-name {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .reason {
+        margin-top: 3px;
+        color: #5f6368;
+        font-size: 12px;
+      }
+
+      .current-status {
+        margin-top: 10px;
+        padding: 8px 10px;
+        border: 1px solid #dadce0;
+        border-radius: 7px;
+        background: white;
+        font-size: 11px;
+      }
+
+      .current-status strong {
+        margin-left: 4px;
+      }
+
+      .message {
+        display: none;
+        margin-bottom: 12px;
+        padding: 9px 11px;
+        border-radius: 7px;
+        background: #e6f4ea;
+        color: #137333;
+        font-size: 11px;
+      }
+
+      .message.active {
+        display: block;
+      }
+
+      .message.error {
+        background: #fce8e6;
+        color: #b3261e;
+      }
+
+      .card {
+        padding: 14px;
+        border: 1px solid #dadce0;
+        border-radius: 10px;
+        background: white;
+      }
+
+      .field {
+        margin-bottom: 12px;
+      }
+
+      .field:last-child {
+        margin-bottom: 0;
+      }
+
+      .label {
+        margin-bottom: 5px;
+        color: #5f6368;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      select,
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        background: white;
+        color: #202124;
+        font-family: inherit;
+        font-size: 12px;
+      }
+
+      select,
+      input {
+        height: 38px;
+        padding: 0 9px;
+      }
+
+      textarea {
+        min-height: 72px;
+        padding: 8px 9px;
+        resize: vertical;
+      }
+
+      .conditional {
+        display: none;
+      }
+
+      .conditional.active {
+        display: block;
+      }
+
+      .help {
+        margin-top: 6px;
+        color: #80868b;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+
+      .warning {
+        display: none;
+        margin-top: 10px;
+        padding: 9px 10px;
+        border: 1px solid #f9ab00;
+        border-radius: 7px;
+        background: #fff8e1;
+        color: #5f4b00;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+
+      .warning.active {
+        display: block;
+      }
+
+      .buttons {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      button {
+        min-height: 36px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 6px;
+        background: #202124;
+        color: white;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      button.secondary {
+        border: 1px solid #dadce0;
+        background: white;
+        color: #202124;
+      }
+
+      button:disabled,
+      select:disabled,
+      input:disabled,
+      textarea:disabled {
+        cursor: default;
+        opacity: 0.55;
+      }
+    </style>
+  </head>
+
+
+  <body>
+    <div class="dialog">
+
+      <input
+        type="hidden"
+        id="move-lead-id"
+        value="<?= moveData.leadId ?>"
+      >
+
+      <input
+        type="hidden"
+        id="move-current-status"
+        value="<?= moveData.status ?>"
+      >
+
+
+      <div class="header">
+
+        <h1 class="patient-name">
+          <?= moveData.patientName ?>
+        </h1>
+
+        <div class="reason">
+          <?= moveData.appointmentReason || "No appointment reason" ?>
+        </div>
+
+        <div class="current-status">
+          Current workflow:
+          <strong id="current-status-text">
+            <?= moveData.status ?>
+          </strong>
+        </div>
+
+      </div>
+
+
+      <div
+        id="move-message"
+        class="message"
+      ></div>
+
+
+      <div class="card">
+
+        <div class="field">
+
+          <div class="label">
+            Move To
+          </div>
+
+          <select
+            id="move-target-status"
+            onchange="updateMoveFields()"
+          >
+
+            <option value="">
+              Select Workflow Destination
+            </option>
+
+            <option value="Open Lead / Follow Up">
+              Open Lead / Follow Up
+            </option>
+
+            <option value="Scheduled">
+              Scheduled
+            </option>
+
+            <option value="Case Lost">
+              Case Lost
+            </option>
+
+            <option value="Unrelated">
+              Unrelated
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <!-- Scheduled -->
+        <div
+          id="scheduled-fields"
+          class="conditional"
+        >
+
+          <div class="field">
+
+            <div class="label">
+              Appointment Date
+            </div>
+
+            <input
+              type="date"
+              id="move-scheduled-date"
+              value="<?= moveData.scheduledDateInput ?>"
+            >
+
+            <div class="help">
+              The date may be left blank only when the
+              appointment date is not yet known. The Board
+              will flag the Scheduled card as needing a date.
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- Case Lost -->
+        <div
+          id="case-lost-fields"
+          class="conditional"
+        >
+
+          <div class="field">
+
+            <div class="label">
+              Case Lost Reason
+            </div>
+
+            <select id="move-case-lost-reason">
+
+              <option value="">
+                Select Case Lost Reason
+              </option>
+
+              <? moveData.options.caseLostReasons.forEach(
+                function(reason) {
+              ?>
+
+                <option
+                  value="<?= reason ?>"
+                  <? if (
+                    reason ===
+                    moveData.lostReason
+                  ) { ?>
+                    selected
+                  <? } ?>
+                >
+                  <?= reason ?>
+                </option>
+
+              <? }); ?>
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+        <!-- Unrelated -->
+        <div
+          id="unrelated-fields"
+          class="conditional"
+        >
+
+          <div class="field">
+
+            <div class="label">
+              Unrelated Type
+            </div>
+
+            <select id="move-unrelated-type">
+
+              <option value="">
+                Select Unrelated Type
+              </option>
+
+              <? moveData.options.unrelatedTypes.forEach(
+                function(type) {
+              ?>
+
+                <option
+                  value="<?= type ?>"
+                  <? if (
+                    type ===
+                    moveData.unrelatedType
+                  ) { ?>
+                    selected
+                  <? } ?>
+                >
+                  <?= type ?>
+                </option>
+
+              <? }); ?>
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+        <div class="field">
+
+          <div class="label">
+            Workflow Note
+          </div>
+
+          <textarea
+            id="move-note"
+            placeholder="Optional workflow note"
+          ></textarea>
+
+          <div
+            id="move-note-help"
+            class="help"
+          >
+            Select a workflow destination.
+          </div>
+
+        </div>
+
+
+        <div
+          id="move-warning"
+          class="warning"
+        ></div>
+
+
+        <div class="buttons">
+
+          <button
+            type="button"
+            class="secondary"
+            onclick="google.script.host.close()"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            id="move-submit"
+            onclick="submitBoardMove()"
+          >
+            Move Lead
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <script>
+      function getMoveLeadId() {
+        return document
+          .getElementById(
+            "move-lead-id"
+          )
+          .value
+          .trim();
+      }
+
+
+      function requestLeadDerivedViewsRefresh(
+        invalidation
+      ) {
+        const request = {
+          board:
+            Boolean(
+              invalidation &&
+              invalidation.board
+            ),
+
+          dashboard:
+            Boolean(
+              invalidation &&
+              invalidation.dashboard
+            ),
+        };
+
+        if (
+          !request.board &&
+          !request.dashboard
+        ) {
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+              if (
+                result &&
+                result.warnings &&
+                result.warnings.length
+              ) {
+                console.warn(
+                  "Board/Dashboard refresh warnings:",
+                  result.warnings
+                );
+              }
+            }
+          )
+          .withFailureHandler(
+            function(error) {
+              console.error(
+                "Board/Dashboard refresh failed after a successful workflow update. Use Refresh Board / Refresh Dashboard Data from the Patient Leads menu.",
+                error
+              );
+            }
+          )
+          .refreshLeadDerivedViewsAfterMutation(
+            request
+          );
+      }
+
+
+      function getCurrentStatus() {
+        return document
+          .getElementById(
+            "move-current-status"
+          )
+          .value
+          .trim();
+      }
+
+
+      function setMoveMessage(
+        message,
+        isError
+      ) {
+        const box =
+          document.getElementById(
+            "move-message"
+          );
+
+        box.textContent =
+          message || "";
+
+        box.classList.toggle(
+          "active",
+          Boolean(message)
+        );
+
+        box.classList.toggle(
+          "error",
+          Boolean(isError)
+        );
+      }
+
+
+      function setMoveBusy(
+        busy
+      ) {
+        [
+          "move-target-status",
+          "move-scheduled-date",
+          "move-case-lost-reason",
+          "move-unrelated-type",
+          "move-note",
+          "move-submit",
+        ].forEach(
+          function(id) {
+            const element =
+              document.getElementById(
+                id
+              );
+
+            if (element) {
+              element.disabled =
+                Boolean(busy);
+            }
+          }
+        );
+
+        const button =
+          document.getElementById(
+            "move-submit"
+          );
+
+        if (button) {
+          button.textContent =
+            busy
+              ? "Moving..."
+              : "Move Lead";
+        }
+      }
+
+
+      function updateMoveFields() {
+        const target =
+          document
+            .getElementById(
+              "move-target-status"
+            )
+            .value;
+
+        const current =
+          getCurrentStatus();
+
+
+        document
+          .getElementById(
+            "scheduled-fields"
+          )
+          .classList.toggle(
+            "active",
+            target === "Scheduled"
+          );
+
+
+        document
+          .getElementById(
+            "case-lost-fields"
+          )
+          .classList.toggle(
+            "active",
+            target === "Case Lost"
+          );
+
+
+        document
+          .getElementById(
+            "unrelated-fields"
+          )
+          .classList.toggle(
+            "active",
+            target === "Unrelated"
+          );
+
+
+        const help =
+          document.getElementById(
+            "move-note-help"
+          );
+
+        const warning =
+          document.getElementById(
+            "move-warning"
+          );
+
+
+        warning.classList.remove(
+          "active"
+        );
+
+        warning.textContent = "";
+
+
+        if (!target) {
+          help.textContent =
+            "Select a workflow destination.";
+
+          return;
+        }
+
+
+        if (
+          target ===
+          "Open Lead / Follow Up"
+        ) {
+          help.textContent =
+            current ===
+              "Open Lead / Follow Up"
+              ? (
+                  "This lead is already in the Open Lead / Follow Up lane."
+                )
+              : (
+                  "A reason is required when returning a lead to active follow-up."
+                );
+        }
+
+
+        if (
+          target ===
+          "Scheduled"
+        ) {
+          help.textContent =
+            current === "Scheduled"
+              ? (
+                  "Choose a different appointment date to reschedule this lead."
+                )
+              : (
+                  "Moving to Scheduled will clear any current future follow-up date."
+                );
+        }
+
+
+        if (
+          target ===
+          "Case Lost"
+        ) {
+          help.textContent =
+            "Select the Case Lost reason. A workflow note is optional.";
+        }
+
+
+        if (
+          target ===
+          "Unrelated"
+        ) {
+          help.textContent =
+            "Select the Unrelated classification. A workflow note is optional.";
+        }
+
+
+        if (
+          current !== target
+        ) {
+          if (
+            current === "Scheduled"
+          ) {
+            warning.textContent =
+              "Leaving Scheduled will clear the current appointment date and scheduling note from the active lead record. The history remains in ActivityLog.";
+
+            warning.classList.add(
+              "active"
+            );
+          }
+
+
+          if (
+            current === "Case Lost"
+          ) {
+            warning.textContent =
+              "Leaving Case Lost will clear the current Case Lost reason from the active lead record. The historical change remains in ActivityLog.";
+
+            warning.classList.add(
+              "active"
+            );
+          }
+
+
+          if (
+            current === "Unrelated"
+          ) {
+            warning.textContent =
+              "Leaving Unrelated will clear the current Unrelated classification from the active lead record. The historical change remains in ActivityLog.";
+
+            warning.classList.add(
+              "active"
+            );
+          }
+        }
+      }
+
+
+      function submitBoardMove() {
+        const targetStatus =
+          document
+            .getElementById(
+              "move-target-status"
+            )
+            .value
+            .trim();
+
+        const scheduledDateText =
+          document
+            .getElementById(
+              "move-scheduled-date"
+            )
+            .value
+            .trim();
+
+        const reason =
+          document
+            .getElementById(
+              "move-case-lost-reason"
+            )
+            .value
+            .trim();
+
+        const unrelatedType =
+          document
+            .getElementById(
+              "move-unrelated-type"
+            )
+            .value
+            .trim();
+
+        const note =
+          document
+            .getElementById(
+              "move-note"
+            )
+            .value
+            .trim();
+
+        const current =
+          getCurrentStatus();
+
+
+        if (!targetStatus) {
+          setMoveMessage(
+            "Select a workflow destination.",
+            true
+          );
+
+          return;
+        }
+
+
+        if (
+          targetStatus ===
+            "Case Lost" &&
+          !reason
+        ) {
+          setMoveMessage(
+            "Select a Case Lost reason.",
+            true
+          );
+
+          return;
+        }
+
+
+        if (
+          targetStatus ===
+            "Unrelated" &&
+          !unrelatedType
+        ) {
+          setMoveMessage(
+            "Select an Unrelated type.",
+            true
+          );
+
+          return;
+        }
+
+
+        if (
+          targetStatus ===
+            "Open Lead / Follow Up" &&
+          current !==
+            "Open Lead / Follow Up" &&
+          !note
+        ) {
+          setMoveMessage(
+            "Enter a reason for moving this lead back to Open Lead / Follow Up.",
+            true
+          );
+
+          return;
+        }
+
+
+        /*
+         * Moving between different lanes can clear
+         * obsolete current-state fields, so ask for
+         * one explicit confirmation.
+         */
+        if (
+          current !==
+          targetStatus
+        ) {
+          const confirmed =
+            window.confirm(
+              "Move this lead from \"" +
+              current +
+              "\" to \"" +
+              targetStatus +
+              "\"?"
+            );
+
+          if (!confirmed) {
+            return;
+          }
+        }
+
+
+        setMoveBusy(
+          true
+        );
+
+        setMoveMessage(
+          "Updating workflow...",
+          false
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+
+              setMoveBusy(
+                false
+              );
+
+              setMoveMessage(
+                result.message ||
+                  "Workflow updated.",
+                false
+              );
+
+
+              if (
+                result.changed
+              ) {
+                /*
+                 * Canonical mutation already
+                 * succeeded. Rebuild Board and
+                 * Dashboard in a second request
+                 * before this dialog closes.
+                 */
+                requestLeadDerivedViewsRefresh(
+                  result.invalidation
+                );
+
+                window.setTimeout(
+                  function() {
+                    google.script.host.close();
+                  },
+                  650
+                );
+
+                return;
+              }
+
+
+              /*
+               * No-op: keep dialog open.
+               */
+              if (
+                result.data
+              ) {
+                document
+                  .getElementById(
+                    "move-current-status"
+                  )
+                  .value =
+                    result.data.status;
+
+                document
+                  .getElementById(
+                    "current-status-text"
+                  )
+                  .textContent =
+                    result.data.status;
+              }
+            }
+          )
+          .withFailureHandler(
+            function(error) {
+
+              setMoveBusy(
+                false
+              );
+
+              const message =
+                error &&
+                error.message
+                  ? error.message
+                  : String(error);
+
+              setMoveMessage(
+                message ||
+                  "The workflow could not be updated.",
+                true
+              );
+            }
+          )
+          .boardMoveLead(
+            getMoveLeadId(),
+            {
+              targetStatus,
+              scheduledDateText,
+              reason,
+              unrelatedType,
+              note,
+            }
+          );
+      }
+    </script>
+
+  </body>
+</html>

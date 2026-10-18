@@ -11,7 +11,13 @@
     "routes:generate": "node scripts/generate-route-inventory.mjs",
     "routes:check": "node scripts/generate-route-inventory.mjs --check",
     "images:optimize": "node scripts/optimize-images.mjs",
-    "images:optimize:dry": "node scripts/optimize-images.mjs --dry-run"
+    "images:optimize:dry": "node scripts/optimize-images.mjs --dry-run",
+    "test:derived-view-refresh": "node scripts/derived-view-refresh.test.mjs",
+    "test:archive-cold-storage": "node scripts/archive-cold-storage.test.mjs",
+    "test:contact-crm": "node scripts/contact-crm.test.mjs",
+    "test:contact-route": "node scripts/contact-route.test.mjs",
+    "test:contact-crm:dev": "node scripts/contact-crm-dev-check.mjs",
+    "test:contact-crm:prod-smoke": "node scripts/contact-crm-prod-smoke.mjs --self-test"
   },
   "dependencies": {
     "@portabletext/react": "^6.0.3",
@@ -25,6 +31,7 @@
     "react-dom": "19.2.3",
     "resend": "^6.12.0",
     "sanity": "^5.20.0",
+    "server-only": "^0.0.1",
     "styled-components": "6.3.12"
   },
   "overrides": {

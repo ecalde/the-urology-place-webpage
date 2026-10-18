@@ -1,0 +1,6502 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif;
+        background: #f7f7f8;
+        color: #202124;
+      }
+
+      .dialog {
+        padding: 22px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        margin-bottom: 18px;
+      }
+
+      .patient-name {
+        margin: 0 0 5px;
+        font-size: 25px;
+        font-weight: 700;
+      }
+
+      .reason {
+        color: #5f6368;
+        font-size: 14px;
+      }
+
+      .lead-id {
+        margin-top: 7px;
+        color: #9aa0a6;
+        font-size: 10px;
+        word-break: break-all;
+      }
+
+      .status {
+        background: white;
+        border: 1px solid #dadce0;
+        border-radius: 18px;
+        padding: 8px 13px;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns:
+          minmax(0, 1.08fr)
+          minmax(340px, 0.92fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .details-grid {
+        display: grid;
+        grid-template-columns:
+          repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .section {
+        background: white;
+        border: 1px solid #dadce0;
+        border-radius: 10px;
+        padding: 16px;
+      }
+
+      .section.wide {
+        grid-column: 1 / -1;
+      }
+
+      .section-title {
+        margin: 0 0 14px;
+        color: #5f6368;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .field {
+        margin-bottom: 12px;
+      }
+
+      .field:last-child {
+        margin-bottom: 0;
+      }
+
+      .label {
+        margin-bottom: 3px;
+        color: #80868b;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+      }
+
+      .value {
+        font-size: 13px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+      }
+
+      .message {
+        white-space: pre-wrap;
+      }
+
+      .activity-panel {
+        background: white;
+        border: 1px solid #dadce0;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-bottom: 1px solid #e8eaed;
+      }
+
+      .activity-heading {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .activity-count {
+        color: #80868b;
+        font-size: 11px;
+      }
+
+      .timeline {
+        max-height: 575px;
+        overflow-y: auto;
+        padding: 5px 16px 16px;
+      }
+
+      .activity {
+        position: relative;
+        padding: 15px 0 15px 20px;
+        border-bottom: 1px solid #f1f3f4;
+      }
+
+      .activity:last-child {
+        border-bottom: 0;
+      }
+
+      .activity::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 22px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #5f6368;
+      }
+
+      .activity.reply {
+        margin-left: 18px;
+        padding-left: 18px;
+        border-left: 2px solid #e8eaed;
+      }
+
+      .activity.reply::before {
+        left: 5px;
+        width: 6px;
+        height: 6px;
+      }
+
+      .activity.system::before {
+        background: #9aa0a6;
+      }
+
+      .activity-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .activity-title {
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .activity-time {
+        color: #80868b;
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .activity-detail {
+        margin-top: 3px;
+        color: #5f6368;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .activity-note {
+        margin-top: 7px;
+        padding: 8px 10px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .activity-meta {
+        margin-top: 6px;
+        color: #9aa0a6;
+        font-size: 10px;
+      }
+
+      .recorded-time {
+        margin-top: 3px;
+        color: #9aa0a6;
+        font-size: 9px;
+      }
+
+      .empty-timeline,
+      .section-loading {
+        padding: 30px 18px;
+        text-align: center;
+        color: #80868b;
+        font-size: 13px;
+      }
+
+      .section-error {
+        padding: 30px 18px;
+        text-align: center;
+        color: #b3261e;
+        font-size: 13px;
+      }
+
+      .footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 18px;
+      }
+
+      .close-button {
+        border: 0;
+        border-radius: 6px;
+        padding: 9px 18px;
+        background: #202124;
+        color: white;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .patient-action-workspace {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .patient-action-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .patient-action-group-workflow {
+        padding-top: 8px;
+        border-top: 1px solid #e8eaed;
+      }
+
+      .patient-action-group-label {
+        margin: 0;
+        color: #80868b;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .patient-action-row-primary,
+      .patient-action-row-secondary,
+      .patient-action-row-completion {
+        display: grid;
+        gap: 10px;
+        align-items: stretch;
+      }
+
+      .patient-action-row-primary {
+        grid-template-columns:
+          repeat(3, minmax(0, 1fr));
+      }
+
+      .patient-action-row-secondary {
+        grid-template-columns:
+          minmax(0, 2fr)
+          minmax(0, 1fr);
+      }
+
+      .patient-action-row-completion {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .action-bar,
+      .contact-action,
+      .workflow-action-card {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
+        margin: 0;
+        padding: 12px 14px;
+        background: white;
+        border: 1px solid #dadce0;
+        border-radius: 10px;
+      }
+
+      .workflow-action-card.wide {
+        grid-column: auto;
+      }
+
+      .action-bar-title,
+      .contact-action-header,
+      .workflow-action-header {
+        margin: 0;
+        color: #5f6368;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .assignment-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .assignment-controls .action-select {
+        flex: 1 1 140px;
+        min-width: 0;
+        width: auto;
+      }
+
+      .assignment-controls .action-button {
+        flex: 0 0 auto;
+      }
+
+      .action-select {
+        width: 100%;
+        min-width: 0;
+        height: 34px;
+        padding: 0 9px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        background: white;
+        color: #202124;
+        font-size: 12px;
+      }
+
+      .action-button {
+        min-height: 34px;
+        padding: 0 13px;
+        border: 0;
+        border-radius: 6px;
+        background: #202124;
+        color: white;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .action-button:disabled {
+        cursor: default;
+        opacity: 0.55;
+      }
+
+      .action-message {
+        min-height: 16px;
+        color: #5f6368;
+        font-size: 11px;
+      }
+
+      .action-message.error {
+        color: #b3261e;
+      }
+
+      .contact-action-grid {
+        display: grid;
+        grid-template-columns:
+          minmax(0, 1fr)
+          minmax(0, 1.15fr)
+          auto;
+        gap: 8px 10px;
+        align-items: center;
+      }
+
+      .contact-note {
+        grid-column: 1 / -1;
+        width: 100%;
+        min-height: 52px;
+        padding: 8px 9px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        resize: vertical;
+        color: #202124;
+        font-family: inherit;
+        font-size: 12px;
+      }
+
+      .contact-action-grid .action-buttons {
+        grid-column: 1 / -1;
+      }
+
+      .reached-control {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 34px;
+        padding: 0 4px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .workflow-action-grid {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .action-input {
+        width: 100%;
+        height: 34px;
+        padding: 0 9px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        background: white;
+        color: #202124;
+        font-family: inherit;
+        font-size: 12px;
+      }
+
+      .action-textarea {
+        width: 100%;
+        min-height: 52px;
+        padding: 8px 9px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        resize: vertical;
+        color: #202124;
+        font-family: inherit;
+        font-size: 12px;
+      }
+
+      .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: auto;
+      }
+
+      .secondary-action-button {
+        min-height: 34px;
+        padding: 0 13px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        background: white;
+        color: #202124;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .secondary-action-button:disabled {
+        cursor: default;
+        opacity: 0.55;
+      }
+
+      .action-help {
+        color: #80868b;
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      @media (max-width: 980px) {
+        .patient-action-row-primary {
+          grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+        }
+
+        .patient-action-row-secondary {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .patient-action-row-primary,
+        .patient-action-row-secondary,
+        .patient-action-row-completion {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .contact-action-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .reached-control {
+          white-space: normal;
+        }
+      }
+
+      .attachments-panel {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e8eaed;
+      }
+
+      .attachments-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 9px;
+      }
+
+      .attachments-heading {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .attachment-count {
+        color: #80868b;
+        font-size: 10px;
+      }
+
+      .attachment-target {
+        display: none;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        padding: 7px 9px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        background: #fafafa;
+        font-size: 10px;
+      }
+
+      .attachment-target.active {
+        display: flex;
+      }
+
+      .attachment-target-cancel {
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .attachment-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 9px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 11px;
+      }
+
+      .attachment-description {
+        width: 100%;
+        min-height: 48px;
+        box-sizing: border-box;
+        margin-top: 7px;
+        padding: 8px 9px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        resize: vertical;
+        font-family: inherit;
+        font-size: 11px;
+      }
+
+      .attachment-submit-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 8px;
+      }
+
+      .attachment-list {
+        display: grid;
+        gap: 7px;
+        margin-top: 12px;
+      }
+
+      .attachment-item {
+        padding: 8px 9px;
+        border: 1px solid #e8eaed;
+        border-radius: 7px;
+        background: white;
+      }
+
+      .attachment-name {
+        display: block;
+        color: #1a73e8;
+        font-size: 11px;
+        font-weight: 700;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+      }
+
+      .attachment-name:hover {
+        text-decoration: underline;
+      }
+
+      .attachment-meta {
+        margin-top: 4px;
+        color: #80868b;
+        font-size: 9px;
+      }
+
+      .attachment-description-text {
+        margin-top: 5px;
+        color: #5f6368;
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .attachment-item.unavailable {
+        border-color: #f1c7c3;
+        background: #fef7f6;
+      }
+
+      .attachment-name-disabled {
+        color: #5f6368;
+        cursor: default;
+        text-decoration: none;
+      }
+
+      .attachment-health {
+        margin-top: 6px;
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .attachment-health.warning {
+        color: #b3261e;
+        font-weight: 600;
+      }
+
+      .attachment-health.info {
+        color: #5f6368;
+      }
+
+      .activity-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 7px;
+      }
+
+      .activity-attach-button,
+      .activity-reply-button,
+      .activity-react-button {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #5f6368;
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .activity-attach-button:hover,
+      .activity-reply-button:hover,
+      .activity-react-button:hover {
+        text-decoration: underline;
+      }
+
+      .activity-attach-button:disabled,
+      .activity-reply-button:disabled,
+      .activity-react-button:disabled {
+        cursor: default;
+        opacity: 0.55;
+        text-decoration: none;
+      }
+
+      .activity-react-wrap {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+      }
+
+      .reaction-picker {
+        display: none;
+        position: fixed;
+        z-index: 40;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-width: 148px;
+        max-width: 220px;
+        padding: 6px;
+        background: white;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        box-shadow:
+          0 8px 18px rgba(32, 33, 36, 0.16);
+      }
+
+      .reaction-picker.open {
+        display: flex;
+      }
+
+      .reaction-picker-option {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        min-height: 28px;
+        padding: 3px 5px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .reaction-picker-option:hover,
+      .reaction-picker-option:focus {
+        background: #f8f9fa;
+        border-color: #dadce0;
+        outline: none;
+      }
+
+      .reaction-picker-option.active {
+        border-color: #1a73e8;
+        background: #e8f0fe;
+      }
+
+      .activity-reactions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 8px;
+      }
+
+      .reaction-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        min-height: 25px;
+        padding: 3px 7px;
+        border: 1px solid #dadce0;
+        border-radius: 999px;
+        background: white;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .reaction-button:hover {
+        background: #f8f9fa;
+      }
+
+      .reaction-button.active {
+        border-color: #1a73e8;
+        background: #e8f0fe;
+      }
+
+      .reaction-button:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+
+      .reaction-count {
+        color: #5f6368;
+        font-size: 9px;
+        font-weight: 700;
+      }
+
+      .conversation-composer {
+        padding: 12px 16px 14px;
+        border-bottom: 1px solid #e8eaed;
+        background: #fafafa;
+      }
+
+      .conversation-textarea {
+        width: 100%;
+        min-height: 70px;
+        padding: 9px 10px;
+        border: 1px solid #dadce0;
+        border-radius: 7px;
+        resize: vertical;
+        background: white;
+        color: #202124;
+        font-family: inherit;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .conversation-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .conversation-help {
+        color: #80868b;
+        font-size: 10px;
+        line-height: 1.35;
+      }
+
+      .reply-context {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+        padding: 7px 9px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        background: white;
+        font-size: 11px;
+      }
+
+      .reply-context.active {
+        display: flex;
+      }
+
+      .reply-context-text {
+        color: #5f6368;
+        font-weight: 600;
+      }
+
+      .reply-cancel-button {
+        border: 0;
+        background: transparent;
+        color: #5f6368;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .archive-banner {
+        margin: 0 0 16px;
+        padding: 12px 14px;
+        border-radius: 8px;
+        background: #fff4d6;
+        color: #6b4e00;
+        font-weight: 700;
+      }
+
+      .archive-banner[hidden] {
+        display: none;
+      }
+
+      .archive-meta {
+        margin-top: 6px;
+        font-weight: 500;
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <div class="dialog">
+
+      <input
+        type="hidden"
+        id="patient-lead-id"
+        value="<?= patient.leadId ?>"
+      >
+
+      <div
+        id="archive-state"
+        hidden
+        data-archived="<?= patient.archive.archived ? "true" : "false" ?>"
+        data-can-archive="<?= patient.archive.canArchive ? "true" : "false" ?>"
+        data-can-unarchive="<?= patient.archive.canUnarchive ? "true" : "false" ?>"
+        data-block-code="<?= patient.archive.blockCode ?>"
+        data-archived-at="<?= patient.archive.archivedAt ?>"
+        data-archived-by="<?= patient.archive.archivedBy ?>"
+        data-archived-from="<?= patient.archive.archivedFromStatus ?>"
+        data-archive-reason="<?= patient.archive.archiveReason ?>"
+      ></div>
+
+      <div class="header">
+
+        <div>
+          <h1 class="patient-name">
+            <?=
+              patient.patient.firstName ||
+              "Unnamed"
+            ?>
+            <?=
+              patient.patient.lastName
+            ?>
+          </h1>
+
+          <div class="reason">
+            <?=
+              patient.patient
+                .appointmentReason ||
+              "No appointment reason"
+            ?>
+          </div>
+
+          <div class="lead-id">
+            Lead ID:
+            <?= patient.leadId ?>
+          </div>
+        </div>
+
+        <div
+          class="status"
+          id="status-value"
+        >
+          <?=
+            patient.workflow.status ||
+            "No Status"
+          ?>
+        </div>
+
+      </div>
+
+      <div
+        id="archive-banner"
+        class="archive-banner"
+        hidden
+      >
+        ARCHIVED
+        <div
+          id="archive-banner-meta"
+          class="archive-meta"
+        ></div>
+      </div>
+
+      <div class="patient-action-workspace">
+
+        <div
+          id="action-message"
+          class="action-message"
+        ></div>
+
+        <div class="patient-action-group">
+
+          <div class="patient-action-group-label">
+            Patient Actions
+          </div>
+
+          <div class="patient-action-row-primary">
+
+            <div class="action-bar">
+
+              <div class="action-bar-title">
+                Assignment
+              </div>
+
+              <div class="assignment-controls">
+
+                <select
+                  id="assignment-select"
+                  class="action-select"
+                >
+
+                  <option
+                    value=""
+                    <? if (!patient.workflow.assignedTo) { ?>
+                      selected
+                    <? } ?>
+                  >
+                    Unassigned
+                  </option>
+
+                  <? patient.options.assignees.forEach(
+                    function(assignee) {
+                  ?>
+
+                    <option
+                      value="<?= assignee ?>"
+                      <? if (
+                        assignee ===
+                        patient.workflow.assignedTo
+                      ) { ?>
+                        selected
+                      <? } ?>
+                    >
+                      <?= assignee ?>
+                    </option>
+
+                  <? }); ?>
+
+                </select>
+
+                <button
+                  type="button"
+                  id="save-assignment-button"
+                  class="action-button"
+                  onclick="saveAssignment()"
+                >
+                  Save Assignment
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <div class="workflow-action-card">
+
+              <div class="workflow-action-header">
+                Scheduling
+              </div>
+
+              <div class="workflow-action-grid">
+
+                <input
+                  type="date"
+                  id="scheduled-date-input"
+                  class="action-input"
+                  value="<?= patient.workflow.scheduledDateInput ?>"
+                >
+
+                <textarea
+                  id="schedule-note-input"
+                  class="action-textarea"
+                  placeholder="Optional scheduling note"
+                ><?= patient.workflow.scheduledDateNote || "" ?></textarea>
+
+                <div class="action-help">
+                  Leave the date blank only when moving a lead
+                  to Scheduled before an appointment date is known.
+                </div>
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="save-schedule-button"
+                    class="action-button"
+                    onclick="savePatientSchedule()"
+                  >
+                    Save Schedule
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="workflow-action-card">
+
+              <div class="workflow-action-header">
+                Future Follow-Up
+              </div>
+
+              <div class="workflow-action-grid">
+
+                <input
+                  type="date"
+                  id="follow-up-date-input"
+                  class="action-input"
+                  value="<?= patient.workflow.nextFollowUpInput ?>"
+                >
+
+                <textarea
+                  id="follow-up-note-input"
+                  class="action-textarea"
+                  placeholder="Optional follow-up note"
+                ></textarea>
+
+                <div class="action-help">
+                  Future follow-up dates are available only
+                  for Open Lead / Follow Up.
+                </div>
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="save-follow-up-button"
+                    class="action-button"
+                    onclick="savePatientFollowUp()"
+                  >
+                    Set / Update Follow-Up
+                  </button>
+
+                  <button
+                    type="button"
+                    id="clear-follow-up-button"
+                    class="secondary-action-button"
+                    onclick="clearPatientFollowUp()"
+                  >
+                    Clear Follow-Up
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="patient-action-row-secondary">
+
+            <div class="contact-action">
+
+              <div class="contact-action-header">
+                Record Contact Attempt
+              </div>
+
+              <div class="contact-action-grid">
+
+                <select
+                  id="contact-method-select"
+                  class="action-select"
+                >
+                  <option value="">
+                    Contact Method
+                  </option>
+
+                  <? patient.options.contactMethods.forEach(
+                    function(method) {
+                  ?>
+
+                    <option value="<?= method ?>">
+                      <?= method ?>
+                    </option>
+
+                  <? }); ?>
+                </select>
+
+
+                <select
+                  id="contact-outcome-select"
+                  class="action-select"
+                >
+                  <option value="">
+                    Contact Outcome
+                  </option>
+
+                  <? patient.options.contactOutcomes.forEach(
+                    function(outcome) {
+                  ?>
+
+                    <option value="<?= outcome ?>">
+                      <?= outcome ?>
+                    </option>
+
+                  <? }); ?>
+                </select>
+
+
+                <label class="reached-control">
+
+                  <input
+                    type="checkbox"
+                    id="reached-patient-checkbox"
+                  >
+
+                  Patient reached
+
+                </label>
+
+
+                <textarea
+                  id="contact-attempt-note"
+                  class="contact-note"
+                  placeholder="Optional note about this contact attempt"
+                ></textarea>
+
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="record-attempt-button"
+                    class="action-button"
+                    onclick="recordContactAttempt()"
+                  >
+                    Record Attempt
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="workflow-action-card">
+
+              <div class="workflow-action-header">
+                Workflow Movement
+              </div>
+
+              <div class="workflow-action-grid">
+
+                <select
+                  id="workflow-target-select"
+                  class="action-select"
+                  onchange="updateWorkflowMovementFields()"
+                >
+                  <option value="">
+                    Select Workflow Destination
+                  </option>
+
+                  <option
+                    value="Open Lead / Follow Up"
+                  >
+                    Open Lead / Follow Up
+                  </option>
+
+                  <option
+                    value="Case Lost"
+                  >
+                    Case Lost
+                  </option>
+
+                  <option
+                    value="Unrelated"
+                  >
+                    Unrelated
+                  </option>
+                </select>
+
+
+                <div
+                  id="case-lost-reason-group"
+                  hidden
+                >
+                  <select
+                    id="case-lost-reason-select"
+                    class="action-select"
+                  >
+                    <option value="">
+                      Case Lost Reason
+                    </option>
+
+                    <? patient.options.caseLostReasons.forEach(
+                      function(reason) {
+                    ?>
+
+                      <option value="<?= reason ?>">
+                        <?= reason ?>
+                      </option>
+
+                    <? }); ?>
+                  </select>
+                </div>
+
+
+                <div
+                  id="unrelated-type-group"
+                  hidden
+                >
+                  <select
+                    id="unrelated-type-select"
+                    class="action-select"
+                  >
+                    <option value="">
+                      Unrelated Type
+                    </option>
+
+                    <? patient.options.unrelatedTypes.forEach(
+                      function(type) {
+                    ?>
+
+                      <option value="<?= type ?>">
+                        <?= type ?>
+                      </option>
+
+                    <? }); ?>
+                  </select>
+                </div>
+
+
+                <textarea
+                  id="workflow-move-note"
+                  class="action-textarea"
+                  placeholder="Optional workflow note"
+                ></textarea>
+
+
+                <div
+                  id="workflow-move-help"
+                  class="action-help"
+                >
+                  Use the Scheduling card above to move a lead into Scheduled.
+                </div>
+
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="move-workflow-button"
+                    class="action-button"
+                    onclick="saveWorkflowMovement()"
+                  >
+                    Move Lead
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="patient-action-group patient-action-group-workflow">
+
+          <div class="patient-action-group-label">
+            Workflow
+          </div>
+
+          <div class="patient-action-row-completion">
+
+            <div
+              class="workflow-action-card wide"
+            >
+
+              <div class="workflow-action-header">
+                Workflow Completion
+              </div>
+
+              <div class="workflow-action-grid">
+
+                <textarea
+                  id="completion-note-input"
+                  class="action-textarea"
+                  placeholder="Optional completion or reopen note"
+                ></textarea>
+
+                <div
+                  id="completion-action-help"
+                  class="action-help"
+                >
+                  Scheduled, Case Lost, and Unrelated workflows can be marked complete.
+                </div>
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="complete-workflow-button"
+                    class="action-button"
+                    onclick="completePatientWorkflow()"
+                  >
+                    Mark Complete
+                  </button>
+
+                  <button
+                    type="button"
+                    id="reopen-workflow-button"
+                    class="secondary-action-button"
+                    onclick="reopenPatientWorkflow()"
+                  >
+                    Reopen Workflow
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="patient-action-row-completion">
+
+            <div class="workflow-action-card wide">
+
+              <div class="workflow-action-header">
+                Archive
+              </div>
+
+              <div class="workflow-action-grid">
+
+                <textarea
+                  id="archive-reason-input"
+                  class="action-textarea"
+                  placeholder="Optional archive note"
+                ></textarea>
+
+                <div
+                  id="archive-action-help"
+                  class="action-help"
+                >
+                  Archive removes the lead from the Board. It does not delete the record.
+                </div>
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="archive-lead-button"
+                    class="action-button"
+                    onclick="archivePatientFromDetail()"
+                  >
+                    Archive Patient
+                  </button>
+
+                  <button
+                    type="button"
+                    id="unarchive-lead-button"
+                    class="secondary-action-button"
+                    onclick="unarchivePatientFromDetail()"
+                  >
+                    Unarchive Patient
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="workspace">
+
+        <!-- LEFT SIDE -->
+        <div class="details-grid">
+
+          <section class="section">
+
+            <h2 class="section-title">
+              Patient Information
+            </h2>
+
+            <div class="field">
+              <div class="label">
+                Phone
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.patient.phone ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Email
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.patient.email ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Preferred Contact
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.patient
+                    .preferredContactMethod ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Preferred Time
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.patient
+                    .preferredContactTime ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                SMS Consent
+              </div>
+
+              <div class="value">
+                <?= patient.patient.smsConsent ?>
+              </div>
+            </div>
+
+          </section>
+
+
+          <section class="section">
+
+            <h2 class="section-title">
+              Workflow
+            </h2>
+
+            <div class="field">
+              <div class="label">
+                Assigned To
+              </div>
+
+              <div
+                class="value"
+                id="assigned-to-value"
+              >
+                <?=
+                  patient.workflow.assignedTo ||
+                  "Unassigned"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Contact Attempts
+              </div>
+
+              <div
+                class="value"
+                id="attempt-count-value"
+              >
+                <?= patient.workflow.attemptCount ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Ever Reached
+              </div>
+
+              <div
+                class="value"
+                id="reached-patient-value"
+              >
+                <?= patient.workflow.reachedPatient ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Last Contact Outcome
+              </div>
+
+              <div
+                class="value"
+                id="last-contact-outcome-value"
+              >
+                <?=
+                  patient.workflow
+                    .lastContactOutcome ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Next Follow-Up
+              </div>
+
+              <div
+                class="value"
+                id="next-follow-up-value"
+              >
+                <?=
+                  patient.workflow
+                    .nextFollowUpOn ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Scheduled Date
+              </div>
+
+              <div
+                class="value"
+                id="scheduled-date-value"
+              >
+                <?=
+                  patient.workflow
+                    .scheduledDate ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+          </section>
+
+
+          <section class="section wide">
+
+            <h2 class="section-title">
+              Original Patient Message
+            </h2>
+
+            <div class="value message">
+              <?=
+                patient.patient.message ||
+                "No message provided."
+              ?>
+            </div>
+
+          </section>
+
+
+          <section class="section">
+
+            <h2 class="section-title">
+              Workflow Details
+            </h2>
+
+            <div class="field">
+              <div class="label">
+                First Attempt
+              </div>
+
+              <div
+                class="value"
+                id="first-attempt-value"
+              >
+                <?=
+                  patient.workflow
+                    .firstAttemptAt ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Last Attempt
+              </div>
+
+              <div
+                class="value"
+                id="last-attempt-value"
+              >
+                <?=
+                  patient.workflow
+                    .lastAttemptAt ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Scheduled Date Note
+              </div>
+
+              <div
+                class="value"
+                id="scheduled-date-note-value"
+              >
+                <?=
+                  patient.workflow
+                    .scheduledDateNote ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Scheduled Date Missing
+              </div>
+
+              <div
+                class="value"
+                id="schedule-date-missing-value"
+              >
+                <?= patient.workflow.scheduleDateMissing
+                  ? "Yes"
+                  : "No"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Workflow Complete
+              </div>
+
+              <div
+                class="value"
+                id="workflow-complete-value"
+              >
+                <?=
+                  patient.workflow
+                    .workflowComplete ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Completed At
+              </div>
+
+              <div
+                class="value"
+                id="completed-at-value"
+              >
+                <?=
+                  patient.workflow
+                    .completedAt ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Completed By
+              </div>
+
+              <div
+                class="value"
+                id="completed-by-value"
+              >
+                <?=
+                  patient.workflow
+                    .completedBy ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Case Lost Reason
+              </div>
+
+              <div
+                class="value"
+                id="lost-reason-value"
+              >
+                <?=
+                  patient.workflow
+                    .lostReason ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Unrelated Type
+              </div>
+
+              <div
+                class="value"
+                id="unrelated-type-value"
+              >
+                <?=
+                  patient.workflow
+                    .unrelatedType ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+          </section>
+
+
+          <section class="section">
+
+            <h2 class="section-title">
+              Source & Audit
+            </h2>
+
+            <div class="field">
+              <div class="label">
+                Intake Source
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.source
+                    .intakeSource ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Page Name
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.source.pageName ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Source Path
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.source.sourcePath ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Created At
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.source.createdAt ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Created By
+              </div>
+
+              <div class="value">
+                <?=
+                  patient.source.createdBy ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="label">
+                Last Activity
+              </div>
+
+              <div
+                class="value"
+                id="last-activity-value"
+              >
+                <?=
+                  patient.source
+                    .lastActivityAt ||
+                  "—"
+                ?>
+              </div>
+            </div>
+
+          </section>
+
+        </div>
+
+
+        <!-- RIGHT SIDE -->
+        <aside class="activity-panel">
+
+          <div class="activity-header">
+
+            <h2 class="activity-heading">
+              Comments & Activity
+            </h2>
+
+            <div
+              class="activity-count"
+              id="activity-count"
+            >
+              Loading…
+            </div>
+
+          </div>
+
+          <div class="conversation-composer">
+
+            <input
+              type="hidden"
+              id="conversation-reply-target-id"
+              value=""
+            >
+
+            <div
+              id="reply-context"
+              class="reply-context"
+            >
+              <span
+                id="reply-context-text"
+                class="reply-context-text"
+              >
+                Replying to comment
+              </span>
+
+              <button
+                type="button"
+                id="reply-cancel-button"
+                class="reply-cancel-button"
+                onclick="cancelPatientReply()"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <textarea
+              id="conversation-note-input"
+              class="conversation-textarea"
+              placeholder="Add an internal staff comment"
+            ></textarea>
+
+            <div class="conversation-actions">
+
+              <div class="conversation-help">
+                Internal staff conversation for this lead.
+              </div>
+
+              <button
+                type="button"
+                id="conversation-submit-button"
+                class="action-button"
+                onclick="submitPatientConversation()"
+              >
+                Add Comment
+              </button>
+
+            </div>
+
+          </div>
+
+          <div class="attachments-panel">
+
+            <div class="attachments-header">
+
+              <h3 class="attachments-heading">
+                Attachments
+              </h3>
+
+              <div
+                class="attachment-count"
+                id="attachment-count"
+              >
+                Loading…
+              </div>
+
+            </div>
+
+
+            <input
+              type="hidden"
+              id="attachment-target-activity-id"
+              value=""
+            >
+
+
+            <div
+              id="attachment-target"
+              class="attachment-target"
+            >
+
+              <span id="attachment-target-text">
+                Attaching to conversation
+              </span>
+
+              <button
+                type="button"
+                class="attachment-target-cancel"
+                onclick="cancelPatientAttachmentTarget()"
+              >
+                Cancel
+              </button>
+
+            </div>
+
+
+            <input
+              type="text"
+              id="attachment-drive-input"
+              class="attachment-input"
+              placeholder="Paste Google Drive file link or ID"
+            >
+
+
+            <textarea
+              id="attachment-description-input"
+              class="attachment-description"
+              placeholder="Optional attachment description"
+            ></textarea>
+
+
+            <div class="attachment-submit-row">
+
+              <button
+                type="button"
+                id="attachment-submit-button"
+                class="action-button"
+                onclick="submitPatientAttachment()"
+              >
+                Add Attachment
+              </button>
+
+            </div>
+
+
+            <div
+              id="attachment-list"
+              class="attachment-list"
+            >
+
+              <div class="section-loading">
+                Loading attachments…
+              </div>
+
+            </div>
+
+          </div>
+
+          <div id="timeline-container">
+
+            <div class="section-loading">
+              Loading activity…
+            </div>
+
+          </div>
+
+        </aside>
+
+      </div>
+
+
+      <div class="footer">
+
+        <button
+          class="close-button"
+          onclick="google.script.host.close()"
+        >
+          Close
+        </button>
+
+      </div>
+
+    </div>
+    <script>
+      function getPatientLeadId() {
+        return document
+          .getElementById(
+            "patient-lead-id"
+          )
+          .value
+          .trim();
+      }
+
+
+      function setPatientActionMessage(
+        message,
+        isError
+      ) {
+        const element =
+          document.getElementById(
+            "action-message"
+          );
+
+        element.textContent =
+          message || "";
+
+        element.classList.toggle(
+          "error",
+          Boolean(isError)
+        );
+      }
+
+
+      function hasRefreshSection(
+        refresh,
+        key
+      ) {
+        return (
+          refresh &&
+          Object.prototype.hasOwnProperty.call(
+            refresh,
+            key
+          )
+        );
+      }
+
+
+      let patientActivityLoadGeneration = 0;
+      let patientAttachmentsLoadGeneration = 0;
+      let patientActivityHasLoaded = false;
+      let patientAttachmentsHaveLoaded = false;
+      let patientAllowedReactionEmojis = [];
+      let openReactionPickerActivityId = "";
+      const patientReactionLoadGenerations = {};
+      const patientReactionPendingToggles = {};
+      const patientReactionInFlight = {};
+
+
+      function nextPatientActivityLoadGeneration() {
+        patientActivityLoadGeneration += 1;
+        return patientActivityLoadGeneration;
+      }
+
+
+      function nextPatientAttachmentsLoadGeneration() {
+        patientAttachmentsLoadGeneration += 1;
+        return patientAttachmentsLoadGeneration;
+      }
+
+
+      function isCurrentPatientActivityLoad(
+        generation
+      ) {
+        return (
+          generation ===
+          patientActivityLoadGeneration
+        );
+      }
+
+
+      function isCurrentPatientAttachmentsLoad(
+        generation
+      ) {
+        return (
+          generation ===
+          patientAttachmentsLoadGeneration
+        );
+      }
+
+
+      function getPatientActionErrorMessage(
+        error,
+        fallback
+      ) {
+        if (
+          error &&
+          error.message
+        ) {
+          return error.message;
+        }
+
+        if (
+          typeof error ===
+          "string" &&
+          error.trim()
+        ) {
+          return error;
+        }
+
+        return fallback;
+      }
+
+
+      function showPatientSecondarySectionState(
+        containerId,
+        countId,
+        countText,
+        className,
+        message
+      ) {
+        const container =
+          document.getElementById(
+            containerId
+          );
+
+        const count =
+          document.getElementById(
+            countId
+          );
+
+        if (count) {
+          count.textContent =
+            countText;
+        }
+
+        if (!container) {
+          return;
+        }
+
+        container.replaceChildren();
+
+        const state =
+          document.createElement(
+            "div"
+          );
+
+        state.className =
+          className;
+
+        state.textContent =
+          message;
+
+        container.appendChild(
+          state
+        );
+      }
+
+
+      function requestPatientActivityRefresh() {
+        const leadId =
+          getPatientLeadId();
+
+        const generation =
+          nextPatientActivityLoadGeneration();
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+              if (
+                !isCurrentPatientActivityLoad(
+                  generation
+                )
+              ) {
+                return;
+              }
+
+              if (
+                !result ||
+                !Array.isArray(
+                  result.activity
+                )
+              ) {
+                if (
+                  !patientActivityHasLoaded
+                ) {
+                  showPatientSecondarySectionState(
+                    "timeline-container",
+                    "activity-count",
+                    "Unavailable",
+                    "section-error",
+                    "Activity could not be loaded. You can still use Patient Details."
+                  );
+                }
+
+                return;
+              }
+
+              patientActivityHasLoaded =
+                true;
+
+              rememberPatientAllowedReactionEmojis(
+                result.allowedEmojis
+              );
+
+              renderPatientActivityTimeline(
+                result.activity
+              );
+            }
+          )
+          .withFailureHandler(
+            function(error) {
+              if (
+                !isCurrentPatientActivityLoad(
+                  generation
+                )
+              ) {
+                return;
+              }
+
+              if (
+                !patientActivityHasLoaded
+              ) {
+                showPatientSecondarySectionState(
+                  "timeline-container",
+                  "activity-count",
+                  "Unavailable",
+                  "section-error",
+                  getPatientActionErrorMessage(
+                    error,
+                    "Activity could not be loaded. You can still use Patient Details."
+                  )
+                );
+
+                return;
+              }
+
+              console.error(
+                "Activity timeline refresh failed. Use Patient Detail reopen if the timeline looks stale.",
+                error
+              );
+            }
+          )
+          .patientDetailLoadActivityData(
+            leadId
+          );
+      }
+
+
+      function requestPatientAttachmentsRefresh() {
+        const leadId =
+          getPatientLeadId();
+
+        const generation =
+          nextPatientAttachmentsLoadGeneration();
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+              if (
+                !isCurrentPatientAttachmentsLoad(
+                  generation
+                )
+              ) {
+                return;
+              }
+
+              if (
+                !result ||
+                !Array.isArray(
+                  result.attachments
+                )
+              ) {
+                if (
+                  !patientAttachmentsHaveLoaded
+                ) {
+                  showPatientSecondarySectionState(
+                    "attachment-list",
+                    "attachment-count",
+                    "Unavailable",
+                    "section-error",
+                    "Attachments could not be loaded. You can still use Patient Details."
+                  );
+                }
+
+                return;
+              }
+
+              patientAttachmentsHaveLoaded =
+                true;
+
+              renderPatientAttachments(
+                result.attachments
+              );
+            }
+          )
+          .withFailureHandler(
+            function(error) {
+              if (
+                !isCurrentPatientAttachmentsLoad(
+                  generation
+                )
+              ) {
+                return;
+              }
+
+              if (
+                !patientAttachmentsHaveLoaded
+              ) {
+                showPatientSecondarySectionState(
+                  "attachment-list",
+                  "attachment-count",
+                  "Unavailable",
+                  "section-error",
+                  getPatientActionErrorMessage(
+                    error,
+                    "Attachments could not be loaded. You can still use Patient Details."
+                  )
+                );
+
+                return;
+              }
+
+              console.error(
+                "Attachment refresh failed. Use Patient Detail reopen if attachments look stale.",
+                error
+              );
+            }
+          )
+          .patientDetailLoadAttachments(
+            leadId
+          );
+      }
+
+
+      function requestLeadDerivedViewsRefresh(
+        invalidation
+      ) {
+        const request = {
+          board:
+            Boolean(
+              invalidation &&
+              invalidation.board
+            ),
+
+          dashboard:
+            Boolean(
+              invalidation &&
+              invalidation.dashboard
+            ),
+        };
+
+        if (
+          !request.board &&
+          !request.dashboard
+        ) {
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+              if (
+                result &&
+                result.warnings &&
+                result.warnings.length
+              ) {
+                console.warn(
+                  "Board/Dashboard refresh warnings:",
+                  result.warnings
+                );
+              }
+
+              if (result) {
+                console.log(
+                  "Derived-view refresh complete.",
+                  {
+                    passes:
+                      result.passes,
+                    boardRebuilds:
+                      result.boardRebuilds,
+                    dashboardRebuilds:
+                      result.dashboardRebuilds,
+                  }
+                );
+              }
+            }
+          )
+          .withFailureHandler(
+            function(error) {
+              console.error(
+                "Board/Dashboard refresh failed after a successful patient update. Use Refresh Board / Refresh Dashboard Data from the Patient Leads menu.",
+                error
+              );
+            }
+          )
+          .refreshLeadDerivedViewsAfterMutation(
+            request
+          );
+      }
+
+
+      function afterPatientMutationSuccess(
+        result
+      ) {
+        if (result.refresh) {
+          applyPatientDetailRefresh(
+            result.refresh
+          );
+        }
+
+        const invalidation =
+          result.invalidation ||
+          {};
+
+        if (
+          invalidation.activity &&
+          !hasRefreshSection(
+            result.refresh,
+            "activity"
+          )
+        ) {
+          requestPatientActivityRefresh();
+        }
+
+        if (
+          invalidation.attachments &&
+          !hasRefreshSection(
+            result.refresh,
+            "attachments"
+          )
+        ) {
+          requestPatientAttachmentsRefresh();
+        }
+
+        if (
+          invalidation.board ||
+          invalidation.dashboard
+        ) {
+          requestLeadDerivedViewsRefresh(
+            invalidation
+          );
+        }
+      }
+
+
+      function setAssignmentBusy(
+        busy
+      ) {
+        const button =
+          document.getElementById(
+            "save-assignment-button"
+          );
+
+        const select =
+          document.getElementById(
+            "assignment-select"
+          );
+
+        button.disabled =
+          Boolean(busy);
+
+        select.disabled =
+          Boolean(busy);
+
+        button.textContent =
+          busy
+            ? "Saving..."
+            : "Save Assignment";
+      }
+
+
+      function saveAssignment() {
+        const leadId =
+          getPatientLeadId();
+
+        const assignedTo =
+          document
+            .getElementById(
+              "assignment-select"
+            )
+            .value
+            .trim();
+
+        setPatientActionMessage(
+          "Saving assignment...",
+          false
+        );
+
+        setAssignmentBusy(
+          true
+        );
+
+        google.script.run
+          .withSuccessHandler(
+            handleAssignmentSuccess
+          )
+          .withFailureHandler(
+            handlePatientActionFailure
+          )
+          .patientDetailAssignLead(
+            leadId,
+            {
+              assignedTo:
+                assignedTo,
+            }
+          );
+      }
+
+
+      function handleAssignmentSuccess(
+        result
+      ) {
+        setAssignmentBusy(
+          false
+        );
+
+        setPatientActionMessage(
+          result.message ||
+          "Assignment saved.",
+          false
+        );
+
+        afterPatientMutationSuccess(
+          result
+        );
+      }
+
+
+      function handlePatientActionFailure(
+        error
+      ) {
+        setAssignmentBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+          "The action could not be completed.",
+          true
+        );
+      }
+
+
+      function setContactAttemptBusy(
+        busy
+      ) {
+        const button =
+          document.getElementById(
+            "record-attempt-button"
+          );
+
+        const method =
+          document.getElementById(
+            "contact-method-select"
+          );
+
+        const outcome =
+          document.getElementById(
+            "contact-outcome-select"
+          );
+
+        const reached =
+          document.getElementById(
+            "reached-patient-checkbox"
+          );
+
+        const note =
+          document.getElementById(
+            "contact-attempt-note"
+          );
+
+        button.disabled =
+          Boolean(busy);
+
+        method.disabled =
+          Boolean(busy);
+
+        outcome.disabled =
+          Boolean(busy);
+
+        reached.disabled =
+          Boolean(busy);
+
+        note.disabled =
+          Boolean(busy);
+
+        button.textContent =
+          busy
+            ? "Recording..."
+            : "Record Attempt";
+      }
+
+
+      function recordContactAttempt() {
+        const leadId =
+          getPatientLeadId();
+
+        const contactMethod =
+          document
+            .getElementById(
+              "contact-method-select"
+            )
+            .value
+            .trim();
+
+        const contactOutcome =
+          document
+            .getElementById(
+              "contact-outcome-select"
+            )
+            .value
+            .trim();
+
+        const reachedPatient =
+          document
+            .getElementById(
+              "reached-patient-checkbox"
+            )
+            .checked;
+
+        const note =
+          document
+            .getElementById(
+              "contact-attempt-note"
+            )
+            .value
+            .trim();
+
+
+        if (!contactMethod) {
+          setPatientActionMessage(
+            "Select a contact method.",
+            true
+          );
+
+          return;
+        }
+
+
+        if (!contactOutcome) {
+          setPatientActionMessage(
+            "Select a contact outcome.",
+            true
+          );
+
+          return;
+        }
+
+
+        setPatientActionMessage(
+          "Recording contact attempt...",
+          false
+        );
+
+        setContactAttemptBusy(
+          true
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            handleContactAttemptSuccess
+          )
+          .withFailureHandler(
+            handleContactAttemptFailure
+          )
+          .patientDetailRecordContactAttempt(
+            leadId,
+            {
+              contactMethod:
+                contactMethod,
+
+              contactOutcome:
+                contactOutcome,
+
+              reachedPatient:
+                reachedPatient,
+
+              note:
+                note,
+            }
+          );
+      }
+
+
+      function handleContactAttemptSuccess(
+        result
+      ) {
+        setContactAttemptBusy(
+          false
+        );
+
+        setPatientActionMessage(
+          result.message ||
+          "Contact attempt recorded.",
+          false
+        );
+
+
+        /*
+         * Clear the attempt form after a successful
+         * submission so an employee does not
+         * accidentally submit the same attempt twice.
+         */
+        document
+          .getElementById(
+            "contact-method-select"
+          )
+          .value = "";
+
+        document
+          .getElementById(
+            "contact-outcome-select"
+          )
+          .value = "";
+
+        document
+          .getElementById(
+            "reached-patient-checkbox"
+          )
+          .checked = false;
+
+        document
+          .getElementById(
+            "contact-attempt-note"
+          )
+          .value = "";
+
+
+        afterPatientMutationSuccess(
+          result
+        );
+      }
+
+
+      function handleContactAttemptFailure(
+        error
+      ) {
+        setContactAttemptBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+          "The contact attempt could not be recorded.",
+          true
+        );
+      }
+
+
+      function setScheduleBusy(
+        busy
+      ) {
+        const button =
+          document.getElementById(
+            "save-schedule-button"
+          );
+
+        const dateInput =
+          document.getElementById(
+            "scheduled-date-input"
+          );
+
+        const noteInput =
+          document.getElementById(
+            "schedule-note-input"
+          );
+
+        button.disabled =
+          Boolean(busy);
+
+        dateInput.disabled =
+          Boolean(busy);
+
+        noteInput.disabled =
+          Boolean(busy);
+
+        button.textContent =
+          busy
+            ? "Saving..."
+            : "Save Schedule";
+      }
+
+
+      function savePatientSchedule() {
+        const leadId =
+          getPatientLeadId();
+
+        const scheduledDateText =
+          document
+            .getElementById(
+              "scheduled-date-input"
+            )
+            .value
+            .trim();
+
+        const note =
+          document
+            .getElementById(
+              "schedule-note-input"
+            )
+            .value
+            .trim();
+
+        setPatientActionMessage(
+          "Saving schedule...",
+          false
+        );
+
+        setScheduleBusy(
+          true
+        );
+
+        google.script.run
+          .withSuccessHandler(
+            handleScheduleSuccess
+          )
+          .withFailureHandler(
+            handleScheduleFailure
+          )
+          .patientDetailScheduleLead(
+            leadId,
+            {
+              scheduledDateText,
+              note,
+            }
+          );
+      }
+
+
+      function handleScheduleSuccess(
+        result
+      ) {
+        setScheduleBusy(
+          false
+        );
+
+        setPatientActionMessage(
+          result.message ||
+            "Schedule saved.",
+          false
+        );
+
+        afterPatientMutationSuccess(
+          result
+        );
+      }
+
+
+      function handleScheduleFailure(
+        error
+      ) {
+        setScheduleBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+            "The schedule could not be saved.",
+          true
+        );
+      }
+
+
+      function setFollowUpBusy(
+        busy
+      ) {
+        const saveButton =
+          document.getElementById(
+            "save-follow-up-button"
+          );
+
+        const clearButton =
+          document.getElementById(
+            "clear-follow-up-button"
+          );
+
+        const dateInput =
+          document.getElementById(
+            "follow-up-date-input"
+          );
+
+        const noteInput =
+          document.getElementById(
+            "follow-up-note-input"
+          );
+
+        saveButton.disabled =
+          Boolean(busy);
+
+        clearButton.disabled =
+          Boolean(busy);
+
+        dateInput.disabled =
+          Boolean(busy);
+
+        noteInput.disabled =
+          Boolean(busy);
+      }
+
+
+      function savePatientFollowUp() {
+        const leadId =
+          getPatientLeadId();
+
+        const followUpDateText =
+          document
+            .getElementById(
+              "follow-up-date-input"
+            )
+            .value
+            .trim();
+
+        if (!followUpDateText) {
+          setPatientActionMessage(
+            "Select a follow-up date.",
+            true
+          );
+
+          return;
+        }
+
+        const note =
+          document
+            .getElementById(
+              "follow-up-note-input"
+            )
+            .value
+            .trim();
+
+        setPatientActionMessage(
+          "Saving follow-up date...",
+          false
+        );
+
+        setFollowUpBusy(
+          true
+        );
+
+        google.script.run
+          .withSuccessHandler(
+            handleFollowUpSuccess
+          )
+          .withFailureHandler(
+            handleFollowUpFailure
+          )
+          .patientDetailSetFollowUpDate(
+            leadId,
+            {
+              followUpDateText,
+              note,
+            }
+          );
+      }
+
+
+      function clearPatientFollowUp() {
+        const leadId =
+          getPatientLeadId();
+
+        const note =
+          document
+            .getElementById(
+              "follow-up-note-input"
+            )
+            .value
+            .trim();
+
+        setPatientActionMessage(
+          "Clearing follow-up date...",
+          false
+        );
+
+        setFollowUpBusy(
+          true
+        );
+
+        google.script.run
+          .withSuccessHandler(
+            handleFollowUpSuccess
+          )
+          .withFailureHandler(
+            handleFollowUpFailure
+          )
+          .patientDetailClearFollowUpDate(
+            leadId,
+            {
+              note,
+            }
+          );
+      }
+
+
+      function handleFollowUpSuccess(
+        result
+      ) {
+        setFollowUpBusy(
+          false
+        );
+
+        setPatientActionMessage(
+          result.message ||
+            "Follow-up updated.",
+          false
+        );
+
+        document
+          .getElementById(
+            "follow-up-note-input"
+          )
+          .value = "";
+
+        afterPatientMutationSuccess(
+          result
+        );
+      }
+
+
+      function handleFollowUpFailure(
+        error
+      ) {
+        setFollowUpBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+            "The follow-up action could not be completed.",
+          true
+        );
+      }
+
+
+      function updateWorkflowMovementFields() {
+        const target =
+          document
+            .getElementById(
+              "workflow-target-select"
+            )
+            .value;
+
+        const caseLostGroup =
+          document.getElementById(
+            "case-lost-reason-group"
+          );
+
+        const unrelatedGroup =
+          document.getElementById(
+            "unrelated-type-group"
+          );
+
+        const note =
+          document.getElementById(
+            "workflow-move-note"
+          );
+
+        const help =
+          document.getElementById(
+            "workflow-move-help"
+          );
+
+
+        caseLostGroup.hidden =
+          target !==
+            "Case Lost";
+
+        unrelatedGroup.hidden =
+          target !==
+            "Unrelated";
+
+
+        if (
+          target ===
+          "Open Lead / Follow Up"
+        ) {
+          note.placeholder =
+            "Reason for reopening / returning this lead to active follow-up";
+
+          help.textContent =
+            "A reason is required when moving a lead back to Open Lead / Follow Up.";
+        } else if (
+          target ===
+          "Case Lost"
+        ) {
+          note.placeholder =
+            "Optional note explaining the Case Lost classification";
+
+          help.textContent =
+            "Choose a Case Lost reason. The workflow remains incomplete until explicitly completed.";
+        } else if (
+          target ===
+          "Unrelated"
+        ) {
+          note.placeholder =
+            "Optional note explaining why this inquiry is unrelated";
+
+          help.textContent =
+            "Choose an Unrelated type. The workflow remains incomplete until explicitly completed.";
+        } else {
+          note.placeholder =
+            "Optional workflow note";
+
+          help.textContent =
+            "Use the Scheduling card above to move a lead into Scheduled.";
+        }
+      }
+
+
+      function setWorkflowMovementBusy(
+        busy
+      ) {
+        const ids = [
+          "workflow-target-select",
+          "case-lost-reason-select",
+          "unrelated-type-select",
+          "workflow-move-note",
+          "move-workflow-button",
+        ];
+
+        ids.forEach(
+          function(id) {
+            const element =
+              document.getElementById(
+                id
+              );
+
+            if (element) {
+              element.disabled =
+                Boolean(busy);
+            }
+          }
+        );
+
+        const button =
+          document.getElementById(
+            "move-workflow-button"
+          );
+
+        if (button) {
+          button.textContent =
+            busy
+              ? "Moving..."
+              : "Move Lead";
+        }
+      }
+
+
+      function saveWorkflowMovement() {
+        const leadId =
+          getPatientLeadId();
+
+        const targetStatus =
+          document
+            .getElementById(
+              "workflow-target-select"
+            )
+            .value
+            .trim();
+
+        const reason =
+          document
+            .getElementById(
+              "case-lost-reason-select"
+            )
+            .value
+            .trim();
+
+        const unrelatedType =
+          document
+            .getElementById(
+              "unrelated-type-select"
+            )
+            .value
+            .trim();
+
+        const note =
+          document
+            .getElementById(
+              "workflow-move-note"
+            )
+            .value
+            .trim();
+
+
+        if (!targetStatus) {
+          setPatientActionMessage(
+            "Select a workflow destination.",
+            true
+          );
+
+          return;
+        }
+
+
+        if (
+          targetStatus ===
+            "Case Lost" &&
+          !reason
+        ) {
+          setPatientActionMessage(
+            "Select a Case Lost reason.",
+            true
+          );
+
+          return;
+        }
+
+
+        if (
+          targetStatus ===
+            "Unrelated" &&
+          !unrelatedType
+        ) {
+          setPatientActionMessage(
+            "Select an Unrelated type.",
+            true
+          );
+
+          return;
+        }
+
+
+        if (
+          targetStatus ===
+            "Open Lead / Follow Up" &&
+          !note
+        ) {
+          setPatientActionMessage(
+            "Enter a reason for moving this lead back to Open Lead / Follow Up.",
+            true
+          );
+
+          return;
+        }
+
+
+        setPatientActionMessage(
+          "Updating workflow...",
+          false
+        );
+
+        setWorkflowMovementBusy(
+          true
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            handleWorkflowMovementSuccess
+          )
+          .withFailureHandler(
+            handleWorkflowMovementFailure
+          )
+          .patientDetailMoveWorkflow(
+            leadId,
+            {
+              targetStatus,
+              reason,
+              unrelatedType,
+              note,
+            }
+          );
+      }
+
+
+      function handleWorkflowMovementSuccess(
+        result
+      ) {
+        setWorkflowMovementBusy(
+          false
+        );
+
+        setPatientActionMessage(
+          result.message ||
+            "Workflow updated.",
+          false
+        );
+
+
+        document
+          .getElementById(
+            "workflow-target-select"
+          )
+          .value = "";
+
+        document
+          .getElementById(
+            "case-lost-reason-select"
+          )
+          .value = "";
+
+        document
+          .getElementById(
+            "unrelated-type-select"
+          )
+          .value = "";
+
+        document
+          .getElementById(
+            "workflow-move-note"
+          )
+          .value = "";
+
+        updateWorkflowMovementFields();
+
+
+        afterPatientMutationSuccess(
+          result
+        );
+      }
+
+
+      function handleWorkflowMovementFailure(
+        error
+      ) {
+        setWorkflowMovementBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+            "The workflow could not be updated.",
+          true
+        );
+      }
+
+
+      function updateCompletionActionState() {
+        const statusElement =
+          document.getElementById(
+            "status-value"
+          );
+
+        const completeValueElement =
+          document.getElementById(
+            "workflow-complete-value"
+          );
+
+        const completeButton =
+          document.getElementById(
+            "complete-workflow-button"
+          );
+
+        const reopenButton =
+          document.getElementById(
+            "reopen-workflow-button"
+          );
+
+        const note =
+          document.getElementById(
+            "completion-note-input"
+          );
+
+        const help =
+          document.getElementById(
+            "completion-action-help"
+          );
+
+        if (
+          !statusElement ||
+          !completeValueElement ||
+          !completeButton ||
+          !reopenButton
+        ) {
+          applyArchiveInteractionState();
+          return;
+        }
+
+        const status =
+          statusElement
+            .textContent
+            .trim();
+
+        const isComplete =
+          completeValueElement
+            .textContent
+            .trim() === "Yes";
+
+        const canComplete =
+          [
+            "Scheduled",
+            "Case Lost",
+            "Unrelated",
+          ].includes(
+            status
+          );
+
+
+        completeButton.disabled =
+          isComplete ||
+          !canComplete;
+
+        reopenButton.disabled =
+          !isComplete;
+
+
+        if (isComplete) {
+          if (note) {
+            note.placeholder =
+              "Optional note explaining why additional work is needed";
+          }
+
+          if (help) {
+            help.textContent =
+              `This ${status} workflow is complete. Reopen it if additional work is needed.`;
+          }
+
+          applyArchiveInteractionState();
+          return;
+        }
+
+
+        if (
+          status ===
+          "Case Lost"
+        ) {
+          if (note) {
+            note.placeholder =
+              "Required completion note explaining why the Case Lost workflow is complete";
+          }
+
+          if (help) {
+            help.textContent =
+              "Case Lost requires a completion note.";
+          }
+
+          applyArchiveInteractionState();
+          return;
+        }
+
+
+        if (
+          status ===
+          "Scheduled"
+        ) {
+          if (note) {
+            note.placeholder =
+              "Optional completion note about the scheduling workflow";
+          }
+
+          if (help) {
+            help.textContent =
+              "Scheduled can be completed only when a valid appointment date exists.";
+          }
+
+          applyArchiveInteractionState();
+          return;
+        }
+
+
+        if (
+          status ===
+          "Unrelated"
+        ) {
+          if (note) {
+            note.placeholder =
+              "Optional note explaining how the unrelated request was handled";
+          }
+
+          if (help) {
+            help.textContent =
+              "Unrelated can be completed once its classification is set.";
+          }
+
+          applyArchiveInteractionState();
+          return;
+        }
+
+
+        if (note) {
+          note.placeholder =
+            "Completion is not available for this workflow status";
+        }
+
+        if (help) {
+          help.textContent =
+            'Open Lead / Follow Up cannot be marked complete. Move it to Scheduled, Case Lost, or Unrelated first.';
+        }
+
+        applyArchiveInteractionState();
+      }
+
+
+      function setCompletionActionBusy(
+        busy
+      ) {
+        const completeButton =
+          document.getElementById(
+            "complete-workflow-button"
+          );
+
+        const reopenButton =
+          document.getElementById(
+            "reopen-workflow-button"
+          );
+
+        const note =
+          document.getElementById(
+            "completion-note-input"
+          );
+
+        if (completeButton) {
+          completeButton.disabled =
+            Boolean(busy);
+        }
+
+        if (reopenButton) {
+          reopenButton.disabled =
+            Boolean(busy);
+        }
+
+        if (note) {
+          note.disabled =
+            Boolean(busy);
+        }
+
+        if (completeButton) {
+          completeButton.textContent =
+            busy
+              ? "Working..."
+              : "Mark Complete";
+        }
+
+        if (reopenButton) {
+          reopenButton.textContent =
+            busy
+              ? "Working..."
+              : "Reopen Workflow";
+        }
+
+        if (!busy) {
+          applyArchiveInteractionState();
+        }
+      }
+
+
+      function completePatientWorkflow() {
+        const leadId =
+          getPatientLeadId();
+
+        const status =
+          document
+            .getElementById(
+              "status-value"
+            )
+            .textContent
+            .trim();
+
+        const note =
+          document
+            .getElementById(
+              "completion-note-input"
+            )
+            .value
+            .trim();
+
+
+        if (
+          status === "Case Lost" &&
+          !note
+        ) {
+          setPatientActionMessage(
+            "A completion note is required for Case Lost.",
+            true
+          );
+
+          return;
+        }
+
+
+        setPatientActionMessage(
+          "Marking workflow complete...",
+          false
+        );
+
+        setCompletionActionBusy(
+          true
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            handleCompletionActionSuccess
+          )
+          .withFailureHandler(
+            handleCompletionActionFailure
+          )
+          .patientDetailCompleteWorkflow(
+            leadId,
+            {
+              note,
+            }
+          );
+      }
+
+
+      function reopenPatientWorkflow() {
+        const leadId =
+          getPatientLeadId();
+
+        const note =
+          document
+            .getElementById(
+              "completion-note-input"
+            )
+            .value
+            .trim();
+
+
+        setPatientActionMessage(
+          "Reopening workflow...",
+          false
+        );
+
+        setCompletionActionBusy(
+          true
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            handleCompletionActionSuccess
+          )
+          .withFailureHandler(
+            handleCompletionActionFailure
+          )
+          .patientDetailReopenWorkflow(
+            leadId,
+            {
+              note,
+            }
+          );
+      }
+
+
+      function handleCompletionActionSuccess(
+        result
+      ) {
+        setCompletionActionBusy(
+          false
+        );
+
+        setPatientActionMessage(
+          result.message ||
+            "Workflow updated.",
+          false
+        );
+
+        const note =
+          document.getElementById(
+            "completion-note-input"
+          );
+
+        if (note) {
+          note.value = "";
+        }
+
+        afterPatientMutationSuccess(
+          result
+        );
+
+        updateCompletionActionState();
+      }
+
+
+      function handleCompletionActionFailure(
+        error
+      ) {
+        setCompletionActionBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+            "The completion action could not be completed.",
+          true
+        );
+
+        updateCompletionActionState();
+      }
+
+
+      function startPatientReply(
+        activityId,
+        activityType
+      ) {
+        const targetInput =
+          document.getElementById(
+            "conversation-reply-target-id"
+          );
+
+        const context =
+          document.getElementById(
+            "reply-context"
+          );
+
+        const contextText =
+          document.getElementById(
+            "reply-context-text"
+          );
+
+        const textarea =
+          document.getElementById(
+            "conversation-note-input"
+          );
+
+        const submitButton =
+          document.getElementById(
+            "conversation-submit-button"
+          );
+
+        targetInput.value =
+          activityId || "";
+
+        context.classList.add(
+          "active"
+        );
+
+        const activityLabel =
+          String(
+            activityType || "activity"
+          )
+            .replace(
+              /_/g,
+              " "
+            );
+
+        contextText.textContent =
+          activityType === "reply"
+            ? "Replying in thread"
+            : `Replying to ${activityLabel}`;
+
+        textarea.placeholder =
+          "Write a reply";
+
+        submitButton.textContent =
+          "Add Reply";
+
+        textarea.focus();
+      }
+
+
+      function cancelPatientReply() {
+        const targetInput =
+          document.getElementById(
+            "conversation-reply-target-id"
+          );
+
+        const context =
+          document.getElementById(
+            "reply-context"
+          );
+
+        const textarea =
+          document.getElementById(
+            "conversation-note-input"
+          );
+
+        const submitButton =
+          document.getElementById(
+            "conversation-submit-button"
+          );
+
+        targetInput.value = "";
+
+        context.classList.remove(
+          "active"
+        );
+
+        textarea.placeholder =
+          "Add an internal staff comment";
+
+        submitButton.textContent =
+          "Add Comment";
+      }
+
+
+      function setPatientConversationBusy(
+        busy
+      ) {
+        const textarea =
+          document.getElementById(
+            "conversation-note-input"
+          );
+
+        const submitButton =
+          document.getElementById(
+            "conversation-submit-button"
+          );
+
+        const cancelButton =
+          document.getElementById(
+            "reply-cancel-button"
+          );
+
+        if (textarea) {
+          textarea.disabled =
+            Boolean(busy);
+        }
+
+        if (submitButton) {
+          submitButton.disabled =
+            Boolean(busy);
+        }
+
+        if (cancelButton) {
+          cancelButton.disabled =
+            Boolean(busy);
+        }
+
+        if (
+          submitButton &&
+          busy
+        ) {
+          submitButton.textContent =
+            "Saving...";
+        }
+      }
+
+
+      function submitPatientConversation() {
+        const leadId =
+          getPatientLeadId();
+
+        const targetActivityId =
+          document
+            .getElementById(
+              "conversation-reply-target-id"
+            )
+            .value
+            .trim();
+
+        const note =
+          document
+            .getElementById(
+              "conversation-note-input"
+            )
+            .value
+            .trim();
+
+        if (!note) {
+          setPatientActionMessage(
+            targetActivityId
+              ? "Enter a reply."
+              : "Enter a comment.",
+            true
+          );
+
+          return;
+        }
+
+        setPatientActionMessage(
+          targetActivityId
+            ? "Adding reply..."
+            : "Adding comment...",
+          false
+        );
+
+        setPatientConversationBusy(
+          true
+        );
+
+        const runner =
+          google.script.run
+            .withSuccessHandler(
+              handlePatientConversationSuccess
+            )
+            .withFailureHandler(
+              handlePatientConversationFailure
+            );
+
+        if (targetActivityId) {
+          runner.patientDetailAddReply(
+            leadId,
+            {
+              targetActivityId,
+              note,
+            }
+          );
+        } else {
+          runner.patientDetailAddComment(
+            leadId,
+            {
+              note,
+            }
+          );
+        }
+      }
+
+
+      function handlePatientConversationSuccess(
+        result
+      ) {
+        setPatientConversationBusy(
+          false
+        );
+
+        setPatientActionMessage(
+          result.message ||
+            "Conversation updated.",
+          false
+        );
+
+        const textarea =
+          document.getElementById(
+            "conversation-note-input"
+          );
+
+        if (textarea) {
+          textarea.value = "";
+        }
+
+        cancelPatientReply();
+
+        afterPatientMutationSuccess(
+          result
+        );
+      }
+
+
+      function handlePatientConversationFailure(
+        error
+      ) {
+        setPatientConversationBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+            "The conversation could not be updated.",
+          true
+        );
+
+        const targetActivityId =
+          document
+            .getElementById(
+              "conversation-reply-target-id"
+            )
+            .value
+            .trim();
+
+        const submitButton =
+          document.getElementById(
+            "conversation-submit-button"
+          );
+
+        if (submitButton) {
+          submitButton.textContent =
+            targetActivityId
+              ? "Add Reply"
+              : "Add Comment";
+        }
+      }
+
+
+      function startPatientAttachment(
+        activityId,
+        activityType
+      ) {
+        const targetInput =
+          document.getElementById(
+            "attachment-target-activity-id"
+          );
+
+        const target =
+          document.getElementById(
+            "attachment-target"
+          );
+
+        const targetText =
+          document.getElementById(
+            "attachment-target-text"
+          );
+
+        const driveInput =
+          document.getElementById(
+            "attachment-drive-input"
+          );
+
+
+        targetInput.value =
+          activityId || "";
+
+        target.classList.add(
+          "active"
+        );
+
+        const activityLabel =
+          String(
+            activityType || "activity"
+          )
+            .replace(
+              /_/g,
+              " "
+            );
+
+        targetText.textContent =
+          `Attaching file to ${activityLabel}`;
+
+        driveInput.focus();
+      }
+
+
+      function cancelPatientAttachmentTarget() {
+        const targetInput =
+          document.getElementById(
+            "attachment-target-activity-id"
+          );
+
+        const target =
+          document.getElementById(
+            "attachment-target"
+          );
+
+        targetInput.value = "";
+
+        target.classList.remove(
+          "active"
+        );
+      }
+
+
+      function setPatientAttachmentBusy(
+        busy
+      ) {
+        const ids = [
+          "attachment-drive-input",
+          "attachment-description-input",
+          "attachment-submit-button",
+        ];
+
+        ids.forEach(
+          function(id) {
+            const element =
+              document.getElementById(
+                id
+              );
+
+            if (element) {
+              element.disabled =
+                Boolean(busy);
+            }
+          }
+        );
+
+        const button =
+          document.getElementById(
+            "attachment-submit-button"
+          );
+
+        if (button) {
+          button.textContent =
+            busy
+              ? "Adding..."
+              : "Add Attachment";
+        }
+      }
+
+
+      function submitPatientAttachment() {
+        const leadId =
+          getPatientLeadId();
+
+        const driveInput =
+          document
+            .getElementById(
+              "attachment-drive-input"
+            )
+            .value
+            .trim();
+
+        const description =
+          document
+            .getElementById(
+              "attachment-description-input"
+            )
+            .value
+            .trim();
+
+        const parentActivityId =
+          document
+            .getElementById(
+              "attachment-target-activity-id"
+            )
+            .value
+            .trim();
+
+
+        if (!driveInput) {
+          setPatientActionMessage(
+            "Paste a Google Drive file link or file ID.",
+            true
+          );
+
+          return;
+        }
+
+
+        setPatientActionMessage(
+          "Adding attachment...",
+          false
+        );
+
+        setPatientAttachmentBusy(
+          true
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            handlePatientAttachmentSuccess
+          )
+          .withFailureHandler(
+            handlePatientAttachmentFailure
+          )
+          .patientDetailAddAttachment(
+            leadId,
+            {
+              driveInput,
+              description,
+              parentActivityId,
+            }
+          );
+      }
+
+
+      function handlePatientAttachmentSuccess(
+        result
+      ) {
+        setPatientAttachmentBusy(
+          false
+        );
+
+        setPatientActionMessage(
+          result.message ||
+            "Attachment added.",
+          false
+        );
+
+
+        document
+          .getElementById(
+            "attachment-drive-input"
+          )
+          .value = "";
+
+        document
+          .getElementById(
+            "attachment-description-input"
+          )
+          .value = "";
+
+        cancelPatientAttachmentTarget();
+
+
+        afterPatientMutationSuccess(
+          result
+        );
+      }
+
+
+      function handlePatientAttachmentFailure(
+        error
+      ) {
+        setPatientAttachmentBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+            "The attachment could not be added.",
+          true
+        );
+      }
+
+
+      function togglePatientReaction(
+        button,
+        activityId,
+        emoji
+      ) {
+        if (
+          !activityId ||
+          !emoji
+        ) {
+          return;
+        }
+
+        const pendingKey =
+          activityId +
+          "\0" +
+          emoji;
+
+        if (
+          patientReactionPendingToggles[
+            pendingKey
+          ] ||
+          patientReactionInFlight[
+            activityId
+          ]
+        ) {
+          return;
+        }
+
+        patientReactionPendingToggles[
+          pendingKey
+        ] = true;
+
+        patientReactionInFlight[
+          activityId
+        ] = true;
+
+        const generation =
+          (
+            Number(
+              patientReactionLoadGenerations[
+                activityId
+              ]
+            ) || 0
+          ) + 1;
+
+        patientReactionLoadGenerations[
+          activityId
+        ] = generation;
+
+        setActivityReactionBusy(
+          activityId,
+          true
+        );
+
+        setPatientActionMessage(
+          "Updating reaction...",
+          false
+        );
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+              delete patientReactionPendingToggles[
+                pendingKey
+              ];
+
+              if (
+                generation !==
+                patientReactionLoadGenerations[
+                  activityId
+                ]
+              ) {
+                return;
+              }
+
+              delete patientReactionInFlight[
+                activityId
+              ];
+
+              setActivityReactionBusy(
+                activityId,
+                false
+              );
+
+              handlePatientReactionSuccess(
+                result
+              );
+            }
+          )
+          .withFailureHandler(
+            function(error) {
+              delete patientReactionPendingToggles[
+                pendingKey
+              ];
+
+              if (
+                generation !==
+                patientReactionLoadGenerations[
+                  activityId
+                ]
+              ) {
+                return;
+              }
+
+              delete patientReactionInFlight[
+                activityId
+              ];
+
+              setActivityReactionBusy(
+                activityId,
+                false
+              );
+
+              handlePatientReactionFailure(
+                error
+              );
+            }
+          )
+          .patientDetailToggleReaction(
+            getPatientLeadId(),
+            {
+              activityId,
+              emoji,
+            }
+          );
+      }
+
+
+      function handlePatientReactionSuccess(
+        result
+      ) {
+        if (
+          result &&
+          result.activityId &&
+          openReactionPickerActivityId ===
+            result.activityId
+        ) {
+          closePatientReactionPicker();
+        }
+
+        setPatientActionMessage(
+          result.message ||
+            "Reaction updated.",
+          false
+        );
+
+        rememberPatientAllowedReactionEmojis(
+          result &&
+          result.allowedEmojis
+        );
+
+        if (
+          result &&
+          result.activityId
+        ) {
+          renderActivityReactions(
+            result.activityId,
+            result.reactions || []
+          );
+        }
+
+        if (
+          result &&
+          Object.prototype.hasOwnProperty.call(
+            result,
+            "lastActivityAt"
+          )
+        ) {
+          const lastActivityElement =
+            document.getElementById(
+              "last-activity-value"
+            );
+
+          if (lastActivityElement) {
+            lastActivityElement.textContent =
+              result.lastActivityAt ||
+              "—";
+          }
+        }
+      }
+
+
+      function handlePatientReactionFailure(
+        error
+      ) {
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setPatientActionMessage(
+          message ||
+            "The reaction could not be updated.",
+          true
+        );
+      }
+
+
+      function rememberPatientAllowedReactionEmojis(
+        emojis
+      ) {
+        if (
+          !Array.isArray(
+            emojis
+          ) ||
+          !emojis.length
+        ) {
+          return;
+        }
+
+        patientAllowedReactionEmojis =
+          emojis.slice();
+      }
+
+
+      function getActivityElementById(
+        activityId
+      ) {
+        const items =
+          document.querySelectorAll(
+            ".activity"
+          );
+
+        for (
+          let index = 0;
+          index < items.length;
+          index++
+        ) {
+          if (
+            items[index].getAttribute(
+              "data-activity-id"
+            ) === activityId
+          ) {
+            return items[index];
+          }
+        }
+
+        return null;
+      }
+
+
+      function getActiveReactions(
+        reactionState
+      ) {
+        const list =
+          Array.isArray(
+            reactionState
+          )
+            ? reactionState
+            : (
+                reactionState &&
+                Array.isArray(
+                  reactionState.reactions
+                )
+                  ? reactionState.reactions
+                  : []
+              );
+
+        return list.filter(
+          function(reaction) {
+            return (
+              reaction &&
+              reaction.emoji &&
+              Number(
+                reaction.count
+              ) > 0
+            );
+          }
+        );
+      }
+
+
+      function getReactionEmojiLabel(
+        emoji
+      ) {
+        const labels = {
+          "👍": "thumbs up",
+          "👎": "thumbs down",
+          "❤️": "heart",
+          "❤": "heart",
+          "🎉": "celebration",
+          "😂": "joy",
+          "😊": "smile",
+          "🙏": "folded hands",
+          "👀": "eyes",
+          "✅": "check mark",
+        };
+
+        return labels[emoji] || emoji;
+      }
+
+
+      function createReactionChip(
+        activityId,
+        reaction
+      ) {
+        const button =
+          document.createElement(
+            "button"
+          );
+
+        button.type =
+          "button";
+
+        button.className =
+          "reaction-button";
+
+        button.setAttribute(
+          "data-emoji",
+          reaction.emoji
+        );
+
+        if (
+          reaction.reactedByMe
+        ) {
+          button.classList.add(
+            "active"
+          );
+        }
+
+        const count =
+          Number(
+            reaction.count
+          ) || 0;
+
+        button.setAttribute(
+          "aria-label",
+          (
+            getReactionEmojiLabel(
+              reaction.emoji
+            ) +
+            ", " +
+            count +
+            (
+              count === 1
+                ? " reaction"
+                : " reactions"
+            ) +
+            (
+              reaction.reactedByMe
+                ? ", including you"
+                : ""
+            )
+          )
+        );
+
+        button.setAttribute(
+          "aria-pressed",
+          reaction.reactedByMe
+            ? "true"
+            : "false"
+        );
+
+        const emoji =
+          document.createElement(
+            "span"
+          );
+
+        emoji.textContent =
+          reaction.emoji;
+
+        button.appendChild(
+          emoji
+        );
+
+        const countElement =
+          document.createElement(
+            "span"
+          );
+
+        countElement.className =
+          "reaction-count";
+
+        countElement.textContent =
+          String(count);
+
+        button.appendChild(
+          countElement
+        );
+
+        button.addEventListener(
+          "click",
+          function() {
+            togglePatientReaction(
+              button,
+              activityId,
+              reaction.emoji
+            );
+          }
+        );
+
+        return button;
+      }
+
+
+      function renderActivityReactions(
+        activityId,
+        reactionState,
+        itemElement
+      ) {
+        const item =
+          itemElement ||
+          getActivityElementById(
+            activityId
+          );
+
+        if (!item) {
+          return;
+        }
+
+        const reactions =
+          getActiveReactions(
+            reactionState
+          );
+
+        let row =
+          item.querySelector(
+            ".activity-reactions"
+          );
+
+        if (
+          reactions.length === 0
+        ) {
+          if (row) {
+            row.remove();
+          }
+
+          syncOpenReactionPickerState(
+            activityId
+          );
+
+          return;
+        }
+
+        if (!row) {
+          row =
+            document.createElement(
+              "div"
+            );
+
+          row.className =
+            "activity-reactions";
+
+          const recorded =
+            item.querySelector(
+              ".recorded-time"
+            );
+
+          const actions =
+            item.querySelector(
+              ".activity-actions"
+            );
+
+          if (recorded) {
+            item.insertBefore(
+              row,
+              recorded
+            );
+          } else if (
+            actions &&
+            actions.nextSibling
+          ) {
+            item.insertBefore(
+              row,
+              actions.nextSibling
+            );
+          } else {
+            item.appendChild(
+              row
+            );
+          }
+        }
+
+        row.replaceChildren();
+
+        reactions.forEach(
+          function(reaction) {
+            row.appendChild(
+              createReactionChip(
+                activityId,
+                reaction
+              )
+            );
+          }
+        );
+
+        syncOpenReactionPickerState(
+          activityId
+        );
+      }
+
+
+      function setActivityReactionBusy(
+        activityId,
+        busy
+      ) {
+        const item =
+          getActivityElementById(
+            activityId
+          );
+
+        if (!item) {
+          return;
+        }
+
+        const controls =
+          item.querySelectorAll(
+            ".activity-react-button, .reaction-button"
+          );
+
+        for (
+          let index = 0;
+          index < controls.length;
+          index++
+        ) {
+          controls[index].disabled =
+            Boolean(busy);
+        }
+
+        const picker =
+          document.getElementById(
+            "patient-reaction-picker"
+          );
+
+        if (
+          picker &&
+          picker.getAttribute(
+            "data-activity-id"
+          ) === activityId
+        ) {
+          const options =
+            picker.querySelectorAll(
+              ".reaction-picker-option"
+            );
+
+          for (
+            let index = 0;
+            index < options.length;
+            index++
+          ) {
+            options[index].disabled =
+              Boolean(busy);
+          }
+        }
+      }
+
+
+      function getOrCreateReactionPicker() {
+        let picker =
+          document.getElementById(
+            "patient-reaction-picker"
+          );
+
+        if (picker) {
+          return picker;
+        }
+
+        picker =
+          document.createElement(
+            "div"
+          );
+
+        picker.id =
+          "patient-reaction-picker";
+
+        picker.className =
+          "reaction-picker";
+
+        picker.setAttribute(
+          "role",
+          "menu"
+        );
+
+        picker.setAttribute(
+          "aria-label",
+          "Choose a reaction"
+        );
+
+        document.body.appendChild(
+          picker
+        );
+
+        return picker;
+      }
+
+
+      function positionReactionPicker(
+        picker,
+        button
+      ) {
+        const rect =
+          button.getBoundingClientRect();
+
+        picker.style.left =
+          Math.max(
+            8,
+            rect.left
+          ) + "px";
+
+        picker.style.top =
+          (
+            rect.bottom +
+            4
+          ) + "px";
+
+        const pickerRect =
+          picker.getBoundingClientRect();
+
+        const overflowRight =
+          pickerRect.right -
+          (
+            window.innerWidth -
+            8
+          );
+
+        if (overflowRight > 0) {
+          picker.style.left =
+            Math.max(
+              8,
+              rect.left -
+              overflowRight
+            ) + "px";
+        }
+
+        if (
+          pickerRect.bottom >
+          window.innerHeight -
+          8
+        ) {
+          picker.style.top =
+            Math.max(
+              8,
+              rect.top -
+              pickerRect.height -
+              4
+            ) + "px";
+        }
+      }
+
+
+      function activityHasCurrentUserReaction(
+        activityId,
+        emoji
+      ) {
+        const item =
+          getActivityElementById(
+            activityId
+          );
+
+        if (!item) {
+          return false;
+        }
+
+        const chips =
+          item.querySelectorAll(
+            ".reaction-button.active"
+          );
+
+        for (
+          let index = 0;
+          index < chips.length;
+          index++
+        ) {
+          if (
+            chips[index].getAttribute(
+              "data-emoji"
+            ) === emoji
+          ) {
+            return true;
+          }
+        }
+
+        return false;
+      }
+
+
+      function fillReactionPicker(
+        picker,
+        activityId
+      ) {
+        picker.replaceChildren();
+
+        patientAllowedReactionEmojis.forEach(
+          function(emoji) {
+            const option =
+              document.createElement(
+                "button"
+              );
+
+            option.type =
+              "button";
+
+            option.className =
+              "reaction-picker-option";
+
+            option.setAttribute(
+              "role",
+              "menuitem"
+            );
+
+            option.setAttribute(
+              "data-emoji",
+              emoji
+            );
+
+            option.setAttribute(
+              "aria-label",
+              "React with " +
+              getReactionEmojiLabel(
+                emoji
+              )
+            );
+
+            if (
+              activityHasCurrentUserReaction(
+                activityId,
+                emoji
+              )
+            ) {
+              option.classList.add(
+                "active"
+              );
+            }
+
+            option.textContent =
+              emoji;
+
+            option.addEventListener(
+              "click",
+              function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                closePatientReactionPicker();
+
+                togglePatientReaction(
+                  option,
+                  activityId,
+                  emoji
+                );
+              }
+            );
+
+            picker.appendChild(
+              option
+            );
+          }
+        );
+      }
+
+
+      function handleReactionPickerOutside(
+        event
+      ) {
+        const picker =
+          document.getElementById(
+            "patient-reaction-picker"
+          );
+
+        if (
+          !picker ||
+          !picker.classList.contains(
+            "open"
+          )
+        ) {
+          return;
+        }
+
+        if (
+          picker.contains(
+            event.target
+          )
+        ) {
+          return;
+        }
+
+        if (
+          event.target.closest &&
+          event.target.closest(
+            ".activity-react-button"
+          )
+        ) {
+          return;
+        }
+
+        closePatientReactionPicker();
+      }
+
+
+      function handleReactionPickerKeydown(
+        event
+      ) {
+        if (
+          event.key ===
+          "Escape"
+        ) {
+          event.preventDefault();
+          closePatientReactionPicker(
+            true
+          );
+        }
+      }
+
+
+      function closePatientReactionPicker(
+        restoreFocus
+      ) {
+        const picker =
+          document.getElementById(
+            "patient-reaction-picker"
+          );
+
+        const activityId =
+          openReactionPickerActivityId;
+
+        openReactionPickerActivityId =
+          "";
+
+        document.removeEventListener(
+          "mousedown",
+          handleReactionPickerOutside
+        );
+
+        document.removeEventListener(
+          "keydown",
+          handleReactionPickerKeydown
+        );
+
+        if (picker) {
+          picker.classList.remove(
+            "open"
+          );
+
+          picker.removeAttribute(
+            "data-activity-id"
+          );
+        }
+
+        if (activityId) {
+          const item =
+            getActivityElementById(
+              activityId
+            );
+
+          const button =
+            item &&
+            item.querySelector(
+              ".activity-react-button"
+            );
+
+          if (button) {
+            button.setAttribute(
+              "aria-expanded",
+              "false"
+            );
+
+            if (restoreFocus) {
+              button.focus();
+            }
+          }
+        }
+      }
+
+
+      function syncOpenReactionPickerState(
+        activityId
+      ) {
+        if (
+          openReactionPickerActivityId !==
+          activityId
+        ) {
+          return;
+        }
+
+        const picker =
+          document.getElementById(
+            "patient-reaction-picker"
+          );
+
+        if (
+          !picker ||
+          !picker.classList.contains(
+            "open"
+          )
+        ) {
+          return;
+        }
+
+        fillReactionPicker(
+          picker,
+          activityId
+        );
+      }
+
+
+      function openPatientReactionPicker(
+        activityId,
+        button
+      ) {
+        if (
+          !activityId ||
+          !button
+        ) {
+          return;
+        }
+
+        if (
+          openReactionPickerActivityId ===
+          activityId
+        ) {
+          closePatientReactionPicker();
+          return;
+        }
+
+        closePatientReactionPicker();
+
+        if (
+          !patientAllowedReactionEmojis.length
+        ) {
+          setPatientActionMessage(
+            "Reactions are still loading. Try again in a moment.",
+            true
+          );
+
+          return;
+        }
+
+        const picker =
+          getOrCreateReactionPicker();
+
+        picker.setAttribute(
+          "data-activity-id",
+          activityId
+        );
+
+        fillReactionPicker(
+          picker,
+          activityId
+        );
+
+        picker.classList.add(
+          "open"
+        );
+
+        openReactionPickerActivityId =
+          activityId;
+
+        button.setAttribute(
+          "aria-expanded",
+          "true"
+        );
+
+        positionReactionPicker(
+          picker,
+          button
+        );
+
+        document.addEventListener(
+          "mousedown",
+          handleReactionPickerOutside
+        );
+
+        document.addEventListener(
+          "keydown",
+          handleReactionPickerKeydown
+        );
+
+        const firstOption =
+          picker.querySelector(
+            ".reaction-picker-option"
+          );
+
+        if (firstOption) {
+          firstOption.focus();
+        }
+      }
+
+
+      function renderPatientAttachments(
+        attachments
+      ) {
+        const container =
+          document.getElementById(
+            "attachment-list"
+          );
+
+        const count =
+          document.getElementById(
+            "attachment-count"
+          );
+
+
+        if (!container) {
+          return;
+        }
+
+
+        const list =
+          Array.isArray(
+            attachments
+          )
+            ? attachments
+            : [];
+
+
+        if (count) {
+          count.textContent =
+            list.length +
+            (
+              list.length === 1
+                ? " file"
+                : " files"
+            );
+        }
+
+
+        container.replaceChildren();
+
+
+        if (
+          list.length === 0
+        ) {
+          const empty =
+            document.createElement(
+              "div"
+            );
+
+          empty.className =
+            "empty-timeline";
+
+          empty.textContent =
+            "No attachments have been added.";
+
+          container.appendChild(
+            empty
+          );
+
+          return;
+        }
+
+
+        list.forEach(
+          function(attachment) {
+
+            const item =
+              document.createElement(
+                "div"
+              );
+
+            item.className =
+              "attachment-item";
+
+
+            if (
+              !attachment.fileAvailable
+            ) {
+              item.classList.add(
+                "unavailable"
+              );
+            }
+
+
+            /*
+             * Clickable only when Drive currently
+             * confirms the file is accessible.
+             */
+            let nameElement;
+
+
+            if (
+              attachment.fileAvailable &&
+              attachment.openUrl
+            ) {
+              nameElement =
+                document.createElement(
+                  "a"
+                );
+
+              nameElement.href =
+                attachment.openUrl;
+
+              nameElement.target =
+                "_blank";
+
+              nameElement.rel =
+                "noopener noreferrer";
+
+            } else {
+
+              nameElement =
+                document.createElement(
+                  "div"
+                );
+
+              nameElement.classList.add(
+                "attachment-name-disabled"
+              );
+            }
+
+
+            nameElement.classList.add(
+              "attachment-name"
+            );
+
+
+            nameElement.textContent =
+              attachment.displayFileName ||
+              attachment.fileName ||
+              "Unavailable Drive file";
+
+
+            item.appendChild(
+              nameElement
+            );
+
+
+            /*
+             * Metadata
+             */
+            const meta =
+              document.createElement(
+                "div"
+              );
+
+            meta.className =
+              "attachment-meta";
+
+
+            const metaParts = [];
+
+
+            if (
+              attachment.uploadedAt
+            ) {
+              metaParts.push(
+                attachment.uploadedAt
+              );
+            }
+
+
+            if (
+              attachment.fileSize
+            ) {
+              metaParts.push(
+                attachment.fileSize
+              );
+            }
+
+
+            if (
+              attachment.uploadedBy
+            ) {
+              metaParts.push(
+                attachment.uploadedBy
+              );
+            }
+
+
+            meta.textContent =
+              metaParts.join(
+                " • "
+              );
+
+
+            item.appendChild(
+              meta
+            );
+
+
+            /*
+             * Description
+             */
+            if (
+              attachment.description
+            ) {
+              const description =
+                document.createElement(
+                  "div"
+                );
+
+              description.className =
+                "attachment-description-text";
+
+              description.textContent =
+                attachment.description;
+
+              item.appendChild(
+                description
+              );
+            }
+
+
+            /*
+             * Health state
+             */
+            if (
+              !attachment.fileAvailable
+            ) {
+              const warning =
+                document.createElement(
+                  "div"
+                );
+
+              warning.className =
+                "attachment-health warning";
+
+              warning.textContent =
+                "⚠ " +
+                (
+                  attachment
+                    .fileHealthMessage ||
+                  "File unavailable or access denied."
+                );
+
+              item.appendChild(
+                warning
+              );
+
+            } else if (
+              attachment.metadataChanged
+            ) {
+
+              const info =
+                document.createElement(
+                  "div"
+                );
+
+              info.className =
+                "attachment-health info";
+
+              info.textContent =
+                "File metadata has changed in Google Drive since this attachment was recorded.";
+
+              item.appendChild(
+                info
+              );
+            }
+
+
+            container.appendChild(
+              item
+            );
+          }
+        );
+      }
+
+
+      /**
+       * Shared refresh function.
+       *
+       * Future 3C actions will reuse this so the
+       * dialog remains synchronized after mutations.
+       */
+      function applyPatientDetailRefresh(
+        refresh
+      ) {
+        if (!refresh) {
+          return;
+        }
+
+        if (refresh.archive) {
+          patientArchiveState = refresh.archive;
+        }
+
+        const statusElement =
+          document.getElementById(
+            "status-value"
+          );
+
+        if (statusElement) {
+          statusElement.textContent =
+            refresh.status ||
+            "No Status";
+        }
+
+        const assignedElement =
+          document.getElementById(
+            "assigned-to-value"
+          );
+
+        if (assignedElement) {
+          assignedElement.textContent =
+            refresh.assignedTo ||
+            "Unassigned";
+        }
+
+        const assignmentSelect =
+          document.getElementById(
+            "assignment-select"
+          );
+
+        if (assignmentSelect) {
+          assignmentSelect.value =
+            refresh.assignedTo || "";
+        }
+
+        const attemptCountElement =
+          document.getElementById(
+            "attempt-count-value"
+          );
+
+        if (attemptCountElement) {
+          attemptCountElement.textContent =
+            String(
+              refresh.attemptCount ?? 0
+            );
+        }
+
+
+        const reachedElement =
+          document.getElementById(
+            "reached-patient-value"
+          );
+
+        if (reachedElement) {
+          reachedElement.textContent =
+            refresh.reachedPatient ||
+            "No";
+        }
+
+
+        const outcomeElement =
+          document.getElementById(
+            "last-contact-outcome-value"
+          );
+
+        if (outcomeElement) {
+          outcomeElement.textContent =
+            refresh.lastContactOutcome ||
+            "—";
+        }
+
+
+        const firstAttemptElement =
+          document.getElementById(
+            "first-attempt-value"
+          );
+
+        if (firstAttemptElement) {
+          firstAttemptElement.textContent =
+            refresh.firstAttemptAt ||
+            "—";
+        }
+
+
+        const lastAttemptElement =
+          document.getElementById(
+            "last-attempt-value"
+          );
+
+        if (lastAttemptElement) {
+          lastAttemptElement.textContent =
+            refresh.lastAttemptAt ||
+            "—";
+        }
+
+
+        const lastActivityElement =
+          document.getElementById(
+            "last-activity-value"
+          );
+
+        if (lastActivityElement) {
+          lastActivityElement.textContent =
+            refresh.lastActivityAt ||
+            "—";
+        }
+
+        const nextFollowUpElement =
+          document.getElementById(
+            "next-follow-up-value"
+          );
+
+        if (nextFollowUpElement) {
+          nextFollowUpElement.textContent =
+            refresh.nextFollowUpOn ||
+            "—";
+        }
+
+
+        const followUpInput =
+          document.getElementById(
+            "follow-up-date-input"
+          );
+
+        if (followUpInput) {
+          followUpInput.value =
+            refresh.nextFollowUpInput ||
+            "";
+        }
+
+
+        const scheduledDateElement =
+          document.getElementById(
+            "scheduled-date-value"
+          );
+
+        if (scheduledDateElement) {
+          scheduledDateElement.textContent =
+            refresh.scheduledDate ||
+            "—";
+        }
+
+
+        const scheduledDateInput =
+          document.getElementById(
+            "scheduled-date-input"
+          );
+
+        if (scheduledDateInput) {
+          scheduledDateInput.value =
+            refresh.scheduledDateInput ||
+            "";
+        }
+
+
+        const scheduledNoteElement =
+          document.getElementById(
+            "scheduled-date-note-value"
+          );
+
+        if (scheduledNoteElement) {
+          scheduledNoteElement.textContent =
+            refresh.scheduledDateNote ||
+            "—";
+        }
+
+        const scheduleDateMissingElement =
+          document.getElementById(
+            "schedule-date-missing-value"
+          );
+
+        if (scheduleDateMissingElement) {
+          scheduleDateMissingElement.textContent =
+            refresh.scheduleDateMissing
+              ? "Yes"
+              : "No";
+        }
+
+
+        const scheduleNoteInput =
+          document.getElementById(
+            "schedule-note-input"
+          );
+
+        if (scheduleNoteInput) {
+          scheduleNoteInput.value =
+            refresh.scheduledDateNote ||
+            "";
+        }
+
+
+        const workflowCompleteElement =
+          document.getElementById(
+            "workflow-complete-value"
+          );
+
+        if (workflowCompleteElement) {
+          workflowCompleteElement.textContent =
+            refresh.workflowComplete ||
+            "No";
+        }
+
+
+        const completedAtElement =
+          document.getElementById(
+            "completed-at-value"
+          );
+
+        if (completedAtElement) {
+          completedAtElement.textContent =
+            refresh.completedAt ||
+            "—";
+        }
+
+
+        const completedByElement =
+          document.getElementById(
+            "completed-by-value"
+          );
+
+        if (completedByElement) {
+          completedByElement.textContent =
+            refresh.completedBy ||
+            "—";
+        }
+
+
+        const lostReasonElement =
+          document.getElementById(
+            "lost-reason-value"
+          );
+
+        if (lostReasonElement) {
+          lostReasonElement.textContent =
+            refresh.lostReason ||
+            "—";
+        }
+
+
+        const unrelatedTypeElement =
+          document.getElementById(
+            "unrelated-type-value"
+          );
+
+        if (unrelatedTypeElement) {
+          unrelatedTypeElement.textContent =
+            refresh.unrelatedType ||
+            "—";
+        }
+
+        if (
+          hasRefreshSection(
+            refresh,
+            "activity"
+          )
+        ) {
+          nextPatientActivityLoadGeneration();
+          patientActivityHasLoaded =
+            true;
+
+          renderPatientActivityTimeline(
+            refresh.activity || []
+          );
+        }
+
+        if (
+          hasRefreshSection(
+            refresh,
+            "attachments"
+          )
+        ) {
+          nextPatientAttachmentsLoadGeneration();
+          patientAttachmentsHaveLoaded =
+            true;
+
+          renderPatientAttachments(
+            refresh.attachments || []
+          );
+        }
+
+        updateCompletionActionState();
+      }
+
+
+      /**
+       * Re-renders the Activity Timeline using DOM
+       * APIs rather than inserting patient-entered
+       * strings through innerHTML.
+       */
+      function renderPatientActivityTimeline(
+        activities
+      ) {
+        closePatientReactionPicker();
+        const container =
+          document.getElementById(
+            "timeline-container"
+          );
+
+        const count =
+          document.getElementById(
+            "activity-count"
+          );
+
+        if (!container) {
+          return;
+        }
+
+        const list =
+          Array.isArray(activities)
+            ? activities
+            : [];
+
+        if (count) {
+          count.textContent =
+            list.length +
+            (
+              list.length === 1
+                ? " activity"
+                : " activities"
+            );
+        }
+
+        container.replaceChildren();
+
+        if (list.length === 0) {
+          const empty =
+            document.createElement(
+              "div"
+            );
+
+          empty.className =
+            "empty-timeline";
+
+          empty.textContent =
+            "No activity has been recorded for this lead.";
+
+          container.appendChild(
+            empty
+          );
+
+          return;
+        }
+
+        const timeline =
+          document.createElement(
+            "div"
+          );
+
+        timeline.className =
+          "timeline";
+
+        list.forEach(
+          function(activity) {
+            const item =
+              document.createElement(
+                "div"
+              );
+
+            item.className =
+              "activity";
+
+            item.setAttribute(
+              "data-activity-id",
+              activity.activityId || ""
+            );
+
+            if (activity.isReply) {
+              item.classList.add(
+                "reply"
+              );
+            }
+
+            if (activity.isSystem) {
+              item.classList.add(
+                "system"
+              );
+            }
+
+
+            const top =
+              document.createElement(
+                "div"
+              );
+
+            top.className =
+              "activity-top";
+
+
+            const title =
+              document.createElement(
+                "div"
+              );
+
+            title.className =
+              "activity-title";
+
+            title.textContent =
+              activity.title ||
+              "Activity";
+
+
+            const time =
+              document.createElement(
+                "div"
+              );
+
+            time.className =
+              "activity-time";
+
+            time.textContent =
+              activity.occurredAt ||
+              "Unknown time";
+
+
+            top.appendChild(
+              title
+            );
+
+            top.appendChild(
+              time
+            );
+
+            item.appendChild(
+              top
+            );
+
+
+            if (activity.detail) {
+              const detail =
+                document.createElement(
+                  "div"
+                );
+
+              detail.className =
+                "activity-detail";
+
+              detail.textContent =
+                activity.detail;
+
+              item.appendChild(
+                detail
+              );
+            }
+
+
+            if (activity.note) {
+              const note =
+                document.createElement(
+                  "div"
+                );
+
+              note.className =
+                "activity-note";
+
+              note.textContent =
+                activity.note;
+
+              item.appendChild(
+                note
+              );
+            }
+
+
+            const meta =
+              document.createElement(
+                "div"
+              );
+
+            meta.className =
+              "activity-meta";
+
+            let metaText =
+              activity.actor ||
+              "Employee";
+
+            if (activity.source) {
+              metaText +=
+                " • " +
+                activity.source;
+            }
+
+            meta.textContent =
+              metaText;
+
+            item.appendChild(
+              meta
+            );
+
+
+            const actions =
+              document.createElement(
+                "div"
+              );
+
+            actions.className =
+              "activity-actions";
+
+
+            const replyButton =
+              document.createElement(
+                "button"
+              );
+
+            replyButton.type =
+              "button";
+
+            replyButton.className =
+              "activity-reply-button";
+
+            replyButton.textContent =
+              "Reply";
+
+            replyButton.addEventListener(
+              "click",
+              function() {
+                startPatientReply(
+                  activity.activityId,
+                  activity.activityType
+                );
+              }
+            );
+
+            actions.appendChild(
+              replyButton
+            );
+
+
+            const attachButton =
+              document.createElement(
+                "button"
+              );
+
+            attachButton.type =
+              "button";
+
+            attachButton.className =
+              "activity-attach-button";
+
+            attachButton.textContent =
+              "Attach";
+
+            attachButton.addEventListener(
+              "click",
+              function() {
+                startPatientAttachment(
+                  activity.activityId,
+                  activity.activityType
+                );
+              }
+            );
+
+            actions.appendChild(
+              attachButton
+            );
+
+
+            if (
+              activity.canReact
+            ) {
+              const reactWrap =
+                document.createElement(
+                  "div"
+                );
+
+              reactWrap.className =
+                "activity-react-wrap";
+
+              const reactButton =
+                document.createElement(
+                  "button"
+                );
+
+              reactButton.type =
+                "button";
+
+              reactButton.className =
+                "activity-react-button";
+
+              reactButton.textContent =
+                "React";
+
+              reactButton.setAttribute(
+                "aria-label",
+                "React"
+              );
+
+              reactButton.setAttribute(
+                "aria-haspopup",
+                "menu"
+              );
+
+              reactButton.setAttribute(
+                "aria-expanded",
+                "false"
+              );
+
+              reactButton.addEventListener(
+                "click",
+                function(event) {
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  openPatientReactionPicker(
+                    activity.activityId,
+                    reactButton
+                  );
+                }
+              );
+
+              reactWrap.appendChild(
+                reactButton
+              );
+
+              actions.appendChild(
+                reactWrap
+              );
+            }
+
+            item.appendChild(
+              actions
+            );
+
+
+            renderActivityReactions(
+              activity.activityId,
+              activity.reactions,
+              item
+            );
+
+
+            if (
+              activity.showRecordedAt
+            ) {
+              const recorded =
+                document.createElement(
+                  "div"
+                );
+
+              recorded.className =
+                "recorded-time";
+
+              recorded.textContent =
+                "Recorded: " +
+                (
+                  activity.recordedAt ||
+                  "Unknown time"
+                );
+
+              item.appendChild(
+                recorded
+              );
+            }
+
+
+            timeline.appendChild(
+              item
+            );
+          }
+        );
+
+        container.appendChild(
+          timeline
+        );
+      }
+
+
+      var patientArchiveState = {
+        archived: false,
+        canArchive: false,
+        canUnarchive: false,
+        blockCode: ""
+      };
+
+      var patientArchiveLocked = false;
+
+      function archiveFlagTrue(value) {
+        return value === true || value === "true";
+      }
+
+      function readArchiveStateFromDom() {
+        var node = document.getElementById("archive-state");
+
+        if (!node) {
+          return patientArchiveState;
+        }
+
+        return {
+          archived: archiveFlagTrue(node.dataset.archived),
+          canArchive: archiveFlagTrue(node.dataset.canArchive),
+          canUnarchive: archiveFlagTrue(node.dataset.canUnarchive),
+          blockCode: node.dataset.blockCode || "",
+          archivedAt: node.dataset.archivedAt || "",
+          archivedBy: node.dataset.archivedBy || "",
+          archivedFromStatus: node.dataset.archivedFrom || "",
+          archiveReason: node.dataset.archiveReason || ""
+        };
+      }
+
+      function archiveHelpText(state) {
+        var code = state && state.blockCode;
+
+        if (code === "SCHEMA_MISSING") {
+          return "Run ADMIN: Setup Lead Archive Schema before archiving.";
+        }
+
+        if (code === "INELIGIBLE_STATUS") {
+          return "Open leads stay on the Board until they move to Scheduled, Case Lost, or Unrelated.";
+        }
+
+        if (code === "SCHEDULED_NOT_COMPLETE") {
+          return "Scheduled leads can be archived after the workflow is marked complete.";
+        }
+
+        if (state && state.archived) {
+          return "This lead is archived. Unarchive it before changing workflow, contact, or completion. Reopen Workflow stays separate.";
+        }
+
+        return "Archive removes the lead from the Board. It does not delete the record.";
+      }
+
+      function applyArchiveInteractionState(next) {
+        if (next) {
+          patientArchiveState = next;
+        }
+
+        var state = patientArchiveState || {};
+        var archived = archiveFlagTrue(state.archived);
+        var banner = document.getElementById("archive-banner");
+        var meta = document.getElementById("archive-banner-meta");
+        var help = document.getElementById("archive-action-help");
+        var archiveButton = document.getElementById("archive-lead-button");
+        var unarchiveButton = document.getElementById("unarchive-lead-button");
+        var reason = document.getElementById("archive-reason-input");
+
+        patientArchiveLocked = archived;
+
+        if (banner) {
+          banner.hidden = !archived;
+        }
+
+        if (meta) {
+          meta.textContent = archived
+            ? "Archived from " +
+              (state.archivedFromStatus || "the previous lane") +
+              (state.archivedAt ? " on " + state.archivedAt : "") +
+              (state.archivedBy ? " by " + state.archivedBy : "") +
+              (state.archiveReason ? ". " + state.archiveReason : "")
+            : "";
+        }
+
+        if (help) {
+          help.textContent = archiveHelpText(state);
+        }
+
+        if (archiveButton) {
+          archiveButton.disabled = !archiveFlagTrue(state.canArchive);
+        }
+
+        if (unarchiveButton) {
+          unarchiveButton.disabled = !archiveFlagTrue(state.canUnarchive);
+        }
+
+        if (reason) {
+          reason.disabled = archived;
+        }
+
+        if (!archived) {
+          return;
+        }
+
+        [
+          "save-assignment-button",
+          "assignment-select",
+          "scheduled-date-input",
+          "schedule-note-input",
+          "save-schedule-button",
+          "follow-up-date-input",
+          "follow-up-note-input",
+          "save-follow-up-button",
+          "clear-follow-up-button",
+          "contact-method-select",
+          "contact-outcome-select",
+          "record-attempt-button",
+          "workflow-target-select",
+          "case-lost-reason-select",
+          "unrelated-type-select",
+          "workflow-move-note",
+          "move-workflow-button",
+          "completion-note-input",
+          "complete-workflow-button",
+          "reopen-workflow-button",
+          "conversation-note-input",
+          "conversation-submit-button",
+          "attachment-drive-input",
+          "attachment-description-input",
+          "attachment-submit-button"
+        ].forEach(function(id) {
+          var control = document.getElementById(id);
+
+          if (control) {
+            control.disabled = true;
+          }
+        });
+      }
+
+      function archivePatientFromDetail() {
+        if (
+          !patientArchiveState ||
+          !archiveFlagTrue(patientArchiveState.canArchive)
+        ) {
+          setPatientActionMessage(
+            archiveHelpText(patientArchiveState),
+            true
+          );
+          return;
+        }
+
+        var reasonInput = document.getElementById("archive-reason-input");
+
+        setPatientActionMessage("Archiving patient...", false);
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            setPatientActionMessage(
+              (result && result.message) || "Lead archived.",
+              false
+            );
+            afterPatientMutationSuccess(result);
+          })
+          .withFailureHandler(function(error) {
+            setPatientActionMessage(
+              (error && error.message) || "The lead could not be archived.",
+              true
+            );
+          })
+          .patientDetailArchiveLead(
+            getPatientLeadId(),
+            {
+              reason: reasonInput ? reasonInput.value : ""
+            }
+          );
+      }
+
+      function unarchivePatientFromDetail() {
+        if (
+          !patientArchiveState ||
+          !archiveFlagTrue(patientArchiveState.canUnarchive)
+        ) {
+          setPatientActionMessage(
+            "This lead is not archived.",
+            true
+          );
+          return;
+        }
+
+        setPatientActionMessage("Unarchiving patient...", false);
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            setPatientActionMessage(
+              (result && result.message) || "Lead unarchived.",
+              false
+            );
+            afterPatientMutationSuccess(result);
+          })
+          .withFailureHandler(function(error) {
+            setPatientActionMessage(
+              (error && error.message) || "The lead could not be unarchived.",
+              true
+            );
+          })
+          .patientDetailUnarchiveLead(getPatientLeadId());
+      }
+
+      document.addEventListener(
+        "click",
+        function(event) {
+          if (!patientArchiveLocked) {
+            return;
+          }
+
+          var node = event.target;
+
+          if (!node || !node.closest) {
+            return;
+          }
+
+          if (node.closest("#unarchive-lead-button")) {
+            return;
+          }
+
+          if (node.closest("button, a, select, textarea, input")) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        },
+        true
+      );
+
+      document.addEventListener(
+        "DOMContentLoaded",
+        function() {
+          patientArchiveState = readArchiveStateFromDom();
+          updateCompletionActionState();
+
+          if (
+            !patientActivityHasLoaded
+          ) {
+            requestPatientActivityRefresh();
+          }
+
+          if (
+            !patientAttachmentsHaveLoaded
+          ) {
+            requestPatientAttachmentsRefresh();
+          }
+        }
+      );
+    </script>
+  </body>
+</html>

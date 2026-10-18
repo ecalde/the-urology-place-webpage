@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        margin: 0;
+        padding: 18px;
+        font-family: Arial, sans-serif;
+        color: #202124;
+      }
+
+      p {
+        line-height: 1.4;
+      }
+
+      label {
+        display: block;
+        margin: 8px 0;
+      }
+
+      button {
+        margin: 12px 8px 0 0;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 4px;
+      }
+
+      #status {
+        margin-top: 16px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Archive maintenance</h2>
+    <p>
+      Cold storage runs only after you confirm it here.
+      A reminder never exports, offloads, or deletes records.
+    </p>
+
+    <label>
+      <input type="radio" name="scope" value="selected" checked>
+      Selected archived leads
+    </label>
+    <label>
+      <input type="radio" name="scope" value="eligible">
+      Eligible archived leads (12+ months)
+    </label>
+    <label>
+      <input type="radio" name="scope" value="all_archived">
+      All archived leads
+    </label>
+    <label id="confirm-wrap" hidden>
+      <input type="checkbox" id="confirm-all">
+      I understand this exports every archived lead, including records younger than 12 months.
+    </label>
+    <p>
+      For selected leads, check rows on the Archive tab first.
+      Refreshing that tab clears the checks.
+    </p>
+    <button type="button" id="preview-button">Preview</button>
+    <button type="button" id="run-button">Export and remove</button>
+
+    <h3>Restore one selected cold-stored patient</h3>
+    <label>
+      <input type="checkbox" id="restore-unarchive">
+      Restore and unarchive
+    </label>
+    <button type="button" id="restore-button">Restore selected patient</button>
+
+    <h3>Import an archive bundle</h3>
+    <label>
+      Drive file id
+      <input id="file-id" type="text">
+    </label>
+    <button type="button" id="import-button">Import archive bundle</button>
+    <button type="button" id="resume-button">Resume cleanup for this file id</button>
+    <div id="status"></div>
+
+    <script>
+      var statusNode = document.getElementById("status");
+
+      function selectedScope() {
+        var chosen = document.querySelector('input[name="scope"]:checked');
+        return chosen ? chosen.value : "selected";
+      }
+
+      function showResult(result) {
+        statusNode.textContent = result && result.message
+          ? result.message
+          : "The archive action could not be completed.";
+      }
+
+      function showFailure(error) {
+        statusNode.textContent = error && error.message
+          ? error.message
+          : "The archive action could not be completed.";
+      }
+
+      document.querySelectorAll('input[name="scope"]').forEach(function(input) {
+        input.addEventListener("change", function() {
+          document.getElementById("confirm-wrap").hidden =
+            selectedScope() !== "all_archived";
+        });
+      });
+
+      document.getElementById("preview-button").addEventListener("click", function() {
+        var confirmAll = document.getElementById("confirm-all").checked;
+        statusNode.textContent = "Previewing...";
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showFailure)
+          .previewArchiveMaintenance(selectedScope(), confirmAll);
+      });
+
+      document.getElementById("run-button").addEventListener("click", function() {
+        var scope = selectedScope();
+        var confirmAll = document.getElementById("confirm-all").checked;
+
+        if (scope === "all_archived" && !confirmAll) {
+          statusNode.textContent =
+            "Offloading every archived lead needs the extra confirmation. Nothing was exported.";
+          return;
+        }
+
+        statusNode.textContent = "Exporting...";
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showFailure)
+          .runArchiveMaintenance(scope, confirmAll);
+      });
+
+      document.getElementById("restore-button").addEventListener("click", function() {
+        statusNode.textContent = "Restoring...";
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showFailure)
+          .restoreSelectedFromMaintenance(
+            document.getElementById("restore-unarchive").checked
+          );
+      });
+
+      document.getElementById("import-button").addEventListener("click", function() {
+        statusNode.textContent = "Importing...";
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showFailure)
+          .importArchiveBundle(document.getElementById("file-id").value);
+      });
+
+      document.getElementById("resume-button").addEventListener("click", function() {
+        statusNode.textContent = "Resuming cleanup...";
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showFailure)
+          .resumeColdStorageCleanup(document.getElementById("file-id").value);
+      });
+    </script>
+  </body>
+</html>

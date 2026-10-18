@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f7f7f8;
+        color: #202124;
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif;
+      }
+
+      .dialog {
+        padding: 20px;
+      }
+
+      .header {
+        margin-bottom: 16px;
+      }
+
+      .patient-name {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .reason {
+        margin-top: 3px;
+        color: #5f6368;
+        font-size: 12px;
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+      }
+
+      .status {
+        display: inline-block;
+        padding: 6px 10px;
+        border: 1px solid #dadce0;
+        border-radius: 999px;
+        background: white;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .lead-id {
+        color: #9aa0a6;
+        font-size: 9px;
+        overflow-wrap: anywhere;
+      }
+
+      .message {
+        display: none;
+        margin-bottom: 12px;
+        padding: 9px 11px;
+        border-radius: 7px;
+        background: #e6f4ea;
+        color: #137333;
+        font-size: 11px;
+      }
+
+      .message.active {
+        display: block;
+      }
+
+      .message.error {
+        background: #fce8e6;
+        color: #b3261e;
+      }
+
+      .card {
+        margin-bottom: 14px;
+        padding: 14px;
+        border: 1px solid #dadce0;
+        border-radius: 10px;
+        background: white;
+      }
+
+      .card-title {
+        margin-bottom: 10px;
+        color: #5f6368;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .grid {
+        display: grid;
+        gap: 9px;
+      }
+
+      .two-column {
+        grid-template-columns:
+          repeat(2, minmax(0, 1fr));
+      }
+
+      select,
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        background: white;
+        color: #202124;
+        font-family: inherit;
+        font-size: 12px;
+      }
+
+      select,
+      input {
+        height: 36px;
+        padding: 0 9px;
+      }
+
+      textarea {
+        min-height: 58px;
+        padding: 8px 9px;
+        resize: vertical;
+      }
+
+      button {
+        min-height: 35px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 6px;
+        background: #202124;
+        color: white;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      button.secondary {
+        border: 1px solid #dadce0;
+        background: white;
+        color: #202124;
+      }
+
+      button:disabled,
+      select:disabled,
+      input:disabled,
+      textarea:disabled {
+        cursor: default;
+        opacity: 0.55;
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 36px;
+        font-size: 12px;
+      }
+
+      .checkbox-row input {
+        width: auto;
+        height: auto;
+      }
+
+      .help {
+        color: #80868b;
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns:
+          repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .metric {
+        padding: 8px;
+        border-radius: 6px;
+        background: #f8f9fa;
+      }
+
+      .metric-label {
+        color: #80868b;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .metric-value {
+        margin-top: 3px;
+        font-size: 12px;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+
+      .footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+
+
+  <body>
+    <div class="dialog">
+
+      <input
+        type="hidden"
+        id="quick-lead-id"
+        value="<?= quick.leadId ?>"
+      >
+
+
+      <div class="header">
+
+        <h1 class="patient-name">
+          <?= quick.patientName ?>
+        </h1>
+
+        <div class="reason">
+          <?= quick.appointmentReason || "No appointment reason" ?>
+        </div>
+
+        <div class="status-row">
+
+          <div
+            class="status"
+            id="quick-status"
+          >
+            <?= quick.status ?>
+          </div>
+
+          <div class="lead-id">
+            <?= quick.leadId ?>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="quick-message"
+        class="message"
+      ></div>
+
+
+      <!-- Assignment -->
+      <div class="card">
+
+        <div class="card-title">
+          Assignment
+        </div>
+
+        <div class="grid">
+
+          <select id="quick-assignment-select">
+
+            <option value="">
+              Unassigned
+            </option>
+
+            <? quick.options.assignees.forEach(
+              function(assignee) {
+            ?>
+
+              <option
+                value="<?= assignee ?>"
+                <? if (
+                  assignee ===
+                  quick.assignedTo
+                ) { ?>
+                  selected
+                <? } ?>
+              >
+                <?= assignee ?>
+              </option>
+
+            <? }); ?>
+
+          </select>
+
+          <div class="button-row">
+
+            <button
+              type="button"
+              id="quick-assignment-button"
+              onclick="saveQuickAssignment()"
+            >
+              Save Assignment
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- Contact attempt -->
+      <div class="card">
+
+        <div class="card-title">
+          Record Contact Attempt
+        </div>
+
+
+        <div class="metrics">
+
+          <div class="metric">
+
+            <div class="metric-label">
+              Attempts
+            </div>
+
+            <div
+              id="quick-attempt-count"
+              class="metric-value"
+            >
+              <?= quick.attemptCount ?>
+            </div>
+
+          </div>
+
+
+          <div class="metric">
+
+            <div class="metric-label">
+              Ever Reached
+            </div>
+
+            <div
+              id="quick-ever-reached"
+              class="metric-value"
+            >
+              <?= quick.reachedPatient ? "Yes" : "No" ?>
+            </div>
+
+          </div>
+
+
+          <div class="metric">
+
+            <div class="metric-label">
+              Last Outcome
+            </div>
+
+            <div
+              id="quick-last-outcome"
+              class="metric-value"
+            >
+              <?= quick.lastContactOutcome || "—" ?>
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="grid two-column">
+
+          <select
+            id="quick-contact-method"
+            <?= quick.canRecordContactAttempt
+              ? ""
+              : "disabled"
+            ?>
+          >
+
+            <option value="">
+              Contact Method
+            </option>
+
+            <? quick.options.contactMethods.forEach(
+              function(method) {
+            ?>
+
+              <option value="<?= method ?>">
+                <?= method ?>
+              </option>
+
+            <? }); ?>
+
+          </select>
+
+
+          <select
+            id="quick-contact-outcome"
+            <?= quick.canRecordContactAttempt
+              ? ""
+              : "disabled"
+            ?>
+          >
+
+            <option value="">
+              Contact Outcome
+            </option>
+
+            <? quick.options.contactOutcomes.forEach(
+              function(outcome) {
+            ?>
+
+              <option value="<?= outcome ?>">
+                <?= outcome ?>
+              </option>
+
+            <? }); ?>
+
+          </select>
+
+        </div>
+
+
+        <div
+          class="checkbox-row"
+          style="margin-top: 8px;"
+        >
+
+          <input
+            type="checkbox"
+            id="quick-contact-reached"
+            <?= quick.canRecordContactAttempt
+              ? ""
+              : "disabled"
+            ?>
+          >
+
+          <label for="quick-contact-reached">
+            Patient reached
+          </label>
+
+        </div>
+
+
+        <textarea
+          id="quick-contact-note"
+          placeholder="Optional contact attempt note"
+          <?= quick.canRecordContactAttempt
+            ? ""
+            : "disabled"
+          ?>
+        ></textarea>
+
+
+        <div
+          id="quick-contact-help"
+          class="help"
+          style="margin-top: 7px;"
+        >
+          <? if (
+            quick.canRecordContactAttempt
+          ) { ?>
+
+            Record a normal outreach attempt without
+            opening Patient Details.
+
+          <? } else { ?>
+
+            This workflow is complete. Reopen it before
+            recording another contact attempt.
+
+          <? } ?>
+        </div>
+
+
+        <div
+          class="button-row"
+          style="margin-top: 9px;"
+        >
+
+          <button
+            type="button"
+            id="quick-contact-button"
+            onclick="saveQuickContactAttempt()"
+            <?= quick.canRecordContactAttempt
+              ? ""
+              : "disabled"
+            ?>
+          >
+            Record Attempt
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- Follow-up -->
+      <div class="card">
+
+        <div class="card-title">
+          Future Follow-Up
+        </div>
+
+
+        <div class="grid">
+
+          <input
+            type="date"
+            id="quick-follow-up-date"
+            value="<?= quick.nextFollowUpInput ?>"
+            <?= quick.canManageFollowUp
+              ? ""
+              : "disabled"
+            ?>
+          >
+
+
+          <textarea
+            id="quick-follow-up-note"
+            placeholder="Optional follow-up note"
+            <?= quick.canManageFollowUp
+              ? ""
+              : "disabled"
+            ?>
+          ></textarea>
+
+
+          <div
+            id="quick-follow-up-help"
+            class="help"
+          >
+            <? if (
+              quick.canManageFollowUp
+            ) { ?>
+
+              Current follow-up:
+              <?= quick.nextFollowUpOn || "None" ?>
+
+            <? } else { ?>
+
+              Follow-up is available only for an incomplete
+              Open Lead / Follow Up workflow.
+
+            <? } ?>
+          </div>
+
+
+          <div class="button-row">
+
+            <button
+              type="button"
+              id="quick-follow-up-save"
+              onclick="saveQuickFollowUp()"
+              <?= quick.canManageFollowUp
+                ? ""
+                : "disabled"
+              ?>
+            >
+              Set / Update
+            </button>
+
+
+            <button
+              type="button"
+              id="quick-follow-up-clear"
+              class="secondary"
+              onclick="clearQuickFollowUp()"
+              <?= (
+                quick.canManageFollowUp &&
+                quick.nextFollowUpInput
+              )
+                ? ""
+                : "disabled"
+              ?>
+            >
+              Clear
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="footer">
+
+        <button
+          type="button"
+          class="secondary"
+          onclick="google.script.host.close()"
+        >
+          Close
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <script>
+      function getQuickLeadId() {
+        return document
+          .getElementById(
+            "quick-lead-id"
+          )
+          .value
+          .trim();
+      }
+
+
+      function requestLeadDerivedViewsRefresh(
+        invalidation
+      ) {
+        const request = {
+          board:
+            Boolean(
+              invalidation &&
+              invalidation.board
+            ),
+
+          dashboard:
+            Boolean(
+              invalidation &&
+              invalidation.dashboard
+            ),
+        };
+
+        if (
+          !request.board &&
+          !request.dashboard
+        ) {
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+              if (
+                result &&
+                result.warnings &&
+                result.warnings.length
+              ) {
+                console.warn(
+                  "Board/Dashboard refresh warnings:",
+                  result.warnings
+                );
+              }
+            }
+          )
+          .withFailureHandler(
+            function(error) {
+              console.error(
+                "Board/Dashboard refresh failed after a successful Board update. Use Refresh Board / Refresh Dashboard Data from the Patient Leads menu.",
+                error
+              );
+            }
+          )
+          .refreshLeadDerivedViewsAfterMutation(
+            request
+          );
+      }
+
+
+      function setQuickMessage(
+        message,
+        isError
+      ) {
+        const box =
+          document.getElementById(
+            "quick-message"
+          );
+
+        box.textContent =
+          message || "";
+
+        box.classList.toggle(
+          "active",
+          Boolean(message)
+        );
+
+        box.classList.toggle(
+          "error",
+          Boolean(isError)
+        );
+      }
+
+
+      function setQuickBusy(
+        busy
+      ) {
+        [
+          "quick-assignment-button",
+          "quick-contact-button",
+          "quick-follow-up-save",
+          "quick-follow-up-clear",
+        ].forEach(
+          function(id) {
+            const element =
+              document.getElementById(
+                id
+              );
+
+            if (element) {
+              element.disabled =
+                Boolean(busy);
+            }
+          }
+        );
+      }
+
+
+      function applyQuickData(
+        data
+      ) {
+        if (!data) {
+          return;
+        }
+
+
+        document
+          .getElementById(
+            "quick-status"
+          )
+          .textContent =
+            data.status;
+
+
+        document
+          .getElementById(
+            "quick-assignment-select"
+          )
+          .value =
+            data.assignedTo || "";
+
+
+        document
+          .getElementById(
+            "quick-attempt-count"
+          )
+          .textContent =
+            String(
+              data.attemptCount || 0
+            );
+
+
+        document
+          .getElementById(
+            "quick-ever-reached"
+          )
+          .textContent =
+            data.reachedPatient
+              ? "Yes"
+              : "No";
+
+
+        document
+          .getElementById(
+            "quick-last-outcome"
+          )
+          .textContent =
+            data.lastContactOutcome ||
+            "—";
+
+
+        const contactIds = [
+          "quick-contact-method",
+          "quick-contact-outcome",
+          "quick-contact-reached",
+          "quick-contact-note",
+          "quick-contact-button",
+        ];
+
+        contactIds.forEach(
+          function(id) {
+            const element =
+              document.getElementById(
+                id
+              );
+
+            if (element) {
+              element.disabled =
+                !data.canRecordContactAttempt;
+            }
+          }
+        );
+
+
+        document
+          .getElementById(
+            "quick-contact-help"
+          )
+          .textContent =
+            data.canRecordContactAttempt
+              ? (
+                  "Record a normal outreach attempt without opening Patient Details."
+                )
+              : (
+                  "This workflow is complete. Reopen it before recording another contact attempt."
+                );
+
+
+        const followUpDate =
+          document.getElementById(
+            "quick-follow-up-date"
+          );
+
+        const followUpNote =
+          document.getElementById(
+            "quick-follow-up-note"
+          );
+
+        const followUpSave =
+          document.getElementById(
+            "quick-follow-up-save"
+          );
+
+        const followUpClear =
+          document.getElementById(
+            "quick-follow-up-clear"
+          );
+
+
+        followUpDate.value =
+          data.nextFollowUpInput ||
+          "";
+
+        followUpDate.disabled =
+          !data.canManageFollowUp;
+
+        followUpNote.disabled =
+          !data.canManageFollowUp;
+
+        followUpSave.disabled =
+          !data.canManageFollowUp;
+
+        followUpClear.disabled =
+          (
+            !data.canManageFollowUp ||
+            !data.nextFollowUpInput
+          );
+
+
+        document
+          .getElementById(
+            "quick-follow-up-help"
+          )
+          .textContent =
+            data.canManageFollowUp
+              ? (
+                  "Current follow-up: " +
+                  (
+                    data.nextFollowUpOn ||
+                    "None"
+                  )
+                )
+              : (
+                  "Follow-up is available only for an incomplete Open Lead / Follow Up workflow."
+                );
+      }
+
+
+      function handleQuickSuccess(
+        result
+      ) {
+        setQuickBusy(
+          false
+        );
+
+        setQuickMessage(
+          result.message ||
+            "Updated successfully.",
+          false
+        );
+
+        applyQuickData(
+          result.data
+        );
+
+        if (
+          result.changed !== false
+        ) {
+          requestLeadDerivedViewsRefresh(
+            result.invalidation
+          );
+        }
+      }
+
+
+      function handleQuickFailure(
+        error
+      ) {
+        setQuickBusy(
+          false
+        );
+
+        const message =
+          error &&
+          error.message
+            ? error.message
+            : String(error);
+
+        setQuickMessage(
+          message ||
+            "The action could not be completed.",
+          true
+        );
+      }
+
+
+      function saveQuickAssignment() {
+        const assignedTo =
+          document
+            .getElementById(
+              "quick-assignment-select"
+            )
+            .value
+            .trim();
+
+
+        setQuickBusy(
+          true
+        );
+
+        setQuickMessage(
+          "Saving assignment...",
+          false
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            handleQuickSuccess
+          )
+          .withFailureHandler(
+            handleQuickFailure
+          )
+          .boardQuickAssignLead(
+            getQuickLeadId(),
+            {
+              assignedTo,
+            }
+          );
+      }
+
+
+      function saveQuickContactAttempt() {
+        const method =
+          document
+            .getElementById(
+              "quick-contact-method"
+            )
+            .value
+            .trim();
+
+        const outcome =
+          document
+            .getElementById(
+              "quick-contact-outcome"
+            )
+            .value
+            .trim();
+
+        const reached =
+          document
+            .getElementById(
+              "quick-contact-reached"
+            )
+            .checked;
+
+        const note =
+          document
+            .getElementById(
+              "quick-contact-note"
+            )
+            .value
+            .trim();
+
+
+        if (!method) {
+          setQuickMessage(
+            "Select a contact method.",
+            true
+          );
+
+          return;
+        }
+
+
+        if (!outcome) {
+          setQuickMessage(
+            "Select a contact outcome.",
+            true
+          );
+
+          return;
+        }
+
+
+        setQuickBusy(
+          true
+        );
+
+        setQuickMessage(
+          "Recording contact attempt...",
+          false
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+
+              document
+                .getElementById(
+                  "quick-contact-method"
+                )
+                .value = "";
+
+              document
+                .getElementById(
+                  "quick-contact-outcome"
+                )
+                .value = "";
+
+              document
+                .getElementById(
+                  "quick-contact-reached"
+                )
+                .checked = false;
+
+              document
+                .getElementById(
+                  "quick-contact-note"
+                )
+                .value = "";
+
+
+              handleQuickSuccess(
+                result
+              );
+            }
+          )
+          .withFailureHandler(
+            handleQuickFailure
+          )
+          .boardQuickRecordContactAttempt(
+            getQuickLeadId(),
+            {
+              contactMethod:
+                method,
+
+              contactOutcome:
+                outcome,
+
+              reachedPatient:
+                reached,
+
+              note,
+            }
+          );
+      }
+
+
+      function saveQuickFollowUp() {
+        const followUpDateText =
+          document
+            .getElementById(
+              "quick-follow-up-date"
+            )
+            .value
+            .trim();
+
+        const note =
+          document
+            .getElementById(
+              "quick-follow-up-note"
+            )
+            .value
+            .trim();
+
+
+        if (!followUpDateText) {
+          setQuickMessage(
+            "Select a follow-up date.",
+            true
+          );
+
+          return;
+        }
+
+
+        setQuickBusy(
+          true
+        );
+
+        setQuickMessage(
+          "Saving follow-up...",
+          false
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+
+              document
+                .getElementById(
+                  "quick-follow-up-note"
+                )
+                .value = "";
+
+              handleQuickSuccess(
+                result
+              );
+            }
+          )
+          .withFailureHandler(
+            handleQuickFailure
+          )
+          .boardQuickSetFollowUpDate(
+            getQuickLeadId(),
+            {
+              followUpDateText,
+              note,
+            }
+          );
+      }
+
+
+      function clearQuickFollowUp() {
+        const note =
+          document
+            .getElementById(
+              "quick-follow-up-note"
+            )
+            .value
+            .trim();
+
+
+        setQuickBusy(
+          true
+        );
+
+        setQuickMessage(
+          "Clearing follow-up...",
+          false
+        );
+
+
+        google.script.run
+          .withSuccessHandler(
+            function(result) {
+
+              document
+                .getElementById(
+                  "quick-follow-up-note"
+                )
+                .value = "";
+
+              handleQuickSuccess(
+                result
+              );
+            }
+          )
+          .withFailureHandler(
+            handleQuickFailure
+          )
+          .boardQuickClearFollowUpDate(
+            getQuickLeadId(),
+            {
+              note,
+            }
+          );
+      }
+    </script>
+
+  </body>
+</html>
