@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { CircumcisionPhotosGate } from "@/app/components/circumcision-photos-gate";
 import {
   HERO_AFTER_SLIDE_BASE,
@@ -6,10 +5,12 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const HERO_BG = "/images/medical-educational-purpose/Marble+2-2880w.png";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/circumcision-photos",
   title: "Adult Circumcision Photos in San Antonio",
   description:
     "Before and after photographs of adult circumcisions performed at The Urology Place in San Antonio.",
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
-};
+});
 
 export default function CircumcisionPhotosPage() {
   return (

@@ -1,17 +1,20 @@
-import type { Metadata } from "next";
 import { ClinicalStudiesContactSection } from "@/app/components/clinical-studies-contact-section";
 import { ClinicalStudiesList } from "@/app/components/clinical-studies-list";
 import { UrinaryIncontinenceStudiesSupplementary } from "@/app/components/urinary-incontinence-studies-supplementary";
 import { URINARY_INCONTINENCE_STUDY_ELIGIBILITY } from "@/app/data/clinical-study-eligibility";
 import { URINARY_INCONTINENCE_STUDIES } from "@/app/data/urinary-incontinence-studies";
 import { HERO_IMAGE_SECTION, HERO_TITLE_ON_IMAGE } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const HERO_BG =
   "/images/overactive%20bladder%20studies/pexels-photo-1705093-2880w.jpeg";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/clinical-research/urinary-incontinence-studies",
   title: "Urinary Incontinence Clinical Trials in San Antonio",
-};
+  description:
+    "Urinary incontinence clinical trials at The Urology Place in San Antonio for bladder control and overactive bladder research.",
+});
 
 export default function UrinaryIncontinenceStudiesPage() {
   return (

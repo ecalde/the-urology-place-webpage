@@ -3,6 +3,14 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "./components/navbar";
 import { Footer } from "./components/footer";
+import {
+  DEFAULT_DESCRIPTION,
+  DEFAULT_SHARE_IMAGE,
+  DEFAULT_TITLE,
+  SITE_NAME,
+  SITE_URL,
+  TITLE_TEMPLATE,
+} from "./lib/site-metadata";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,11 +23,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Urologist in San Antonio | The Urology Place",
-    template: "%s | The Urology Place",
+    default: DEFAULT_TITLE,
+    template: TITLE_TEMPLATE,
   },
-  description: "The Urology Place in San Antonio, TX.",
+  description: DEFAULT_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
+    url: SITE_URL,
+    title: {
+      default: DEFAULT_TITLE,
+      template: TITLE_TEMPLATE,
+    },
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_SHARE_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: {
+      default: DEFAULT_TITLE,
+      template: TITLE_TEMPLATE,
+    },
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_SHARE_IMAGE.url],
+  },
 };
 
 export default function RootLayout({

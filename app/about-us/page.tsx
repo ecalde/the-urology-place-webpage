@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { YouTubeEmbed } from "@/app/components/youtube-embed";
 import {
   AboutUsTeamFromSanity,
@@ -12,10 +11,14 @@ import {
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
 import { client, teamMembersQuery } from "@/lib/sanity";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/about-us",
   title: "About Our Urologists in San Antonio",
-};
+  description:
+    "Meet Dr. Naveen Kella and the board-certified urology team at The Urology Place in San Antonio.",
+});
 
 /** Refresh team content periodically without a full redeploy. */
 export const revalidate = 300;

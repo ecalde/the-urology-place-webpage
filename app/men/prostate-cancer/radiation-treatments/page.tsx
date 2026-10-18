@@ -1,15 +1,16 @@
-import type { Metadata } from "next";
 import { CancerTreatmentDetailPage } from "@/app/components/cancer-treatment-detail-page";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const HERO_BG = encodeURI(
   "/images/radiation treatments/Medical-examination-using-modern-CT-scanner-scaled-e1601502017995-2048x1059.jpeg",
 );
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/men/prostate-cancer/radiation-treatments",
   title: "Prostate Radiation Treatment in San Antonio",
   description:
     "Radiation treatment planning for prostate cancer at The Urology Place in San Antonio, including guidance on brachytherapy and rectal spacer options.",
-};
+});
 
 export default function RadiationTreatmentsPage() {
   return (

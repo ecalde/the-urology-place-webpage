@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Image from "next/image";
 import { BTN_PRIMARY, BTN_SECONDARY } from "@/app/lib/button-styles";
 import {
@@ -6,6 +5,7 @@ import {
   HERO_IMAGE_SECTION,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const PATIENT_PORTAL_HREF = "https://app.elationpassport.com/passport/login/";
 const FAQ_HREF =
@@ -14,9 +14,12 @@ const SUPPORT_HREF = "https://app.elationemr.com/support/";
 const TROUBLESHOOTING_HREF =
   "https://help.elationhealth.com/articles/User-Accounts-Guide-Troubleshooting-account-login-issues";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/patient-resources/patient-portal",
   title: "Patient Portal in San Antonio",
-};
+  description:
+    "Sign in to the Elation Patient Passport to message The Urology Place, review records, and manage your San Antonio urology care.",
+});
 
 export default function PatientPortalPage() {
   return (

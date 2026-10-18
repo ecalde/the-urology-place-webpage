@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Image from "next/image";
 import {
   HERO_AFTER_SLIDE_BASE,
@@ -7,6 +6,7 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const HERO_BG = encodeURI(
   "/images/hormone replacement therapy/64cccddd2d31503d830466f1_What is Testosterone.png",
@@ -48,11 +48,12 @@ const INSTRUCTIONS = [
   },
 ] as const;
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/women/hormone-replacement-therapy/post-insertion-instructions",
   title: "Hormone Pellet Aftercare in San Antonio",
   description:
     "Post-insertion instructions for female hormone replacement therapy pellet treatment at The Urology Place.",
-};
+});
 
 export default function PostInsertionInstructionsPage() {
   return (

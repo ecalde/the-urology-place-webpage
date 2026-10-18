@@ -1,16 +1,17 @@
-import type { Metadata } from "next";
 import { CherryFinancingWidget } from "@/app/components/cherry-financing-widget";
 import {
   HERO_IMAGE_SECTION,
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/financing",
   title: "Urology Patient Financing in San Antonio",
   description:
     "Explore flexible payment options for care at The Urology Place with Cherry patient financing.",
-};
+});
 
 export default function FinancingPage() {
   return (

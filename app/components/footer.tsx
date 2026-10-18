@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ClinicMapEmbed } from "@/app/components/clinic-map-embed";
 import { BTN_ICON_PRIMARY } from "@/app/lib/button-styles";
 import {
   CLINIC_BUSINESS_HOURS_ROWS,
@@ -7,8 +8,6 @@ import {
 } from "@/app/lib/clinic-info";
 const EMAIL = "messages@theupi.com";
 const ADDRESS = "9618 Huebner Road, Suite 120 San Antonio, TX 78240";
-const MAP_EMBED_URL =
-  "https://maps.google.com/maps?q=9618+Huebner+Road+Suite+120+San+Antonio+TX+78240&t=&z=15&ie=UTF8&iwloc=&output=embed";
 
 const SITE_LINKS = [
   { label: "Contact Us", href: "/patient-resources/contact-us" },
@@ -52,19 +51,10 @@ export function Footer() {
             <p className="mt-0.5 text-xs text-slate-500">
               Referral Fax: (210) 761-8851 · Office Fax: (888) 316-9464
             </p>
-            <div className="mt-3 overflow-hidden rounded-lg ring-1 ring-slate-200">
-              <iframe
-                src={MAP_EMBED_URL}
-                width="100%"
-                height="140"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="The Urology Place location"
-                className="block"
-              />
-            </div>
+            <ClinicMapEmbed
+              height={140}
+              frameClassName="mt-3 overflow-hidden rounded-lg ring-1 ring-slate-200"
+            />
           </div>
 
           {/* Site links + hours */}

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Image from "next/image";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { MensWellnessTabs } from "./mens-wellness-tabs";
@@ -8,10 +7,14 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/men/mens-wellness",
   title: "Men's Wellness in San Antonio",
-};
+  description:
+    "Men's wellness care at The Urology Place in San Antonio, including sexual function and hormone optimization with board-certified urologists.",
+});
 
 const DIFFERENTIATORS = [
   { text: "Experienced\nBoard Certified\nUrologists" },

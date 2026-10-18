@@ -1,9 +1,12 @@
-import type { Metadata } from "next";
 import { HERO_SUBTITLE_ON_LIGHT, HERO_TITLE_ON_LIGHT } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/clinical-research",
   title: "Urology Clinical Trials in San Antonio",
-};
+  description:
+    "Clinical research at The Urology Place in San Antonio, including studies in prostate cancer, BPH, bladder cancer, kidney disease, and urinary incontinence.",
+});
 
 export default function ClinicalResearchPage() {
   return (

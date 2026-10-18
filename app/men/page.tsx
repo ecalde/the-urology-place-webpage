@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { BTN_MAKE_APPOINTMENT_HERO } from "@/app/lib/button-styles";
 import {
@@ -7,12 +6,14 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/men",
   title: "Men's Urology in San Antonio",
   description:
     "Men's urologic care at The Urology Place in San Antonio and Austin, including prostate cancer, enlarged prostate, sexual health, vasectomy, bladder cancer, and kidney stones.",
-};
+});
 
 const SERVICES = [
   {

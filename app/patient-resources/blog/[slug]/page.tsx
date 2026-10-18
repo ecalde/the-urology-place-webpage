@@ -7,6 +7,7 @@ import type {
   PortableTextBlock,
 } from "@portabletext/types";
 import { BTN_PRIMARY } from "@/app/lib/button-styles";
+import { pageMetadata, type ShareImage } from "@/app/lib/site-metadata";
 import { blogCategoryLabel, client, urlFor } from "@/lib/sanity";
 
 /** Fetches published post fields. Editors must Publish in Studio for changes to appear on the site; production static pages update on the next deploy unless revalidation is configured. */
@@ -42,6 +43,106 @@ const postBySlugQuery = `*[_type == "post" && slug.current == $slug][0] {
 }`;
 
 const allSlugsQuery = `*[_type == "post" && defined(slug.current)].slug.current`;
+
+/** SEO fields only. Stega is off so encoded characters cannot leak into titles. */
+const postMetadataQuery = `*[_type == "post" && slug.current == $slug][0]{
+  title,
+  excerpt,
+  seoTitle,
+  seoDescription,
+  publishedAt,
+  updatedAt,
+  mainImage{
+    alt,
+    asset,
+    crop,
+    hotspot,
+    "sourceName": asset->originalFilename
+  },
+  "metaDescription": coalesce(seoDescription, excerpt, pt::text(body), "")
+}`;
+
+type BlogPostMetadata = {
+  title: string | null;
+  excerpt: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  publishedAt: string | null;
+  updatedAt: string | null;
+  mainImage: Parameters<typeof urlFor>[0] | null;
+  metaDescription: string | null;
+};
+
+function sanityImageHasAsset(
+  image: Parameters<typeof urlFor>[0] | null | undefined,
+): image is Parameters<typeof urlFor>[0] {
+  if (image == null || typeof image !== "object") return false;
+  const asset = (image as { asset?: unknown }).asset;
+  if (asset == null || typeof asset !== "object") return false;
+  const ref = (asset as { _ref?: unknown })._ref;
+  return typeof ref === "string" && ref.length > 0;
+}
+
+function blogShareImage(
+  image: Parameters<typeof urlFor>[0] | null,
+  alt: string,
+): ShareImage | undefined {
+  if (!sanityImageHasAsset(image)) return undefined;
+  try {
+    const imageAlt =
+      typeof image === "object" &&
+      image !== null &&
+      "alt" in image &&
+      typeof (image as { alt?: unknown }).alt === "string"
+        ? (image as { alt: string }).alt.trim()
+        : "";
+    const sourceName =
+      typeof image === "object" &&
+      image !== null &&
+      "sourceName" in image &&
+      typeof (image as { sourceName?: unknown }).sourceName === "string"
+        ? (image as { sourceName: string }).sourceName
+        : undefined;
+    return {
+      url: urlFor(image).width(1200).height(630).fit("crop").url(),
+      alt: imageAlt || alt,
+      width: 1200,
+      height: 630,
+      sourceName,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function isoTimestamp(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) return undefined;
+  return new Date(time).toISOString();
+}
+
+function clampMetaDescription(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 160) return normalized;
+  const cut = normalized.slice(0, 157);
+  const lastSpace = cut.lastIndexOf(" ");
+  const base = (lastSpace > 80 ? cut.slice(0, lastSpace) : cut).replace(
+    /[.,;:\s]+$/,
+    "",
+  );
+  return `${base}…`;
+}
+
+/** Prefer an editor summary. Otherwise use the first substantial paragraph. */
+function summarizePostDescription(text: string): string {
+  const paragraphs = text
+    .split(/\n+/)
+    .map((part) => part.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const substantial = paragraphs.find((part) => part.length >= 80);
+  return clampMetaDescription(substantial || paragraphs[0] || text);
+}
 
 function PostCta({ href, label }: { href: string; label: string }) {
   const external =
@@ -243,27 +344,38 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await client.fetch<
-    Pick<BlogPost, "title" | "excerpt" | "seoTitle" | "seoDescription"> | null
-  >(
-    `*[_type == "post" && slug.current == $slug][0]{ title, excerpt, seoTitle, seoDescription }`,
-    { slug },
-  );
-  if (!post?.title) {
-    return { title: "Urology Blog in San Antonio" };
+  const path = `/patient-resources/blog/${slug}`;
+  const post = await client
+    .withConfig({ stega: false })
+    .fetch<BlogPostMetadata | null>(postMetadataQuery, { slug });
+  if (!post?.title?.trim()) {
+    return pageMetadata({
+      path,
+      title: "Urology Blog in San Antonio",
+      description:
+        "A urology article from the physicians at The Urology Place in San Antonio.",
+    });
   }
   const raw = (post.seoTitle?.trim() || post.title).trim();
-  const title = /the urology place/i.test(raw)
-    ? { absolute: raw }
+  const absoluteTitle = /the urology place/i.test(raw);
+  const title = absoluteTitle
+    ? raw
     : /san antonio/i.test(raw)
       ? raw
       : `${raw} in San Antonio`;
-  const metaDesc =
-    post.seoDescription?.trim() || post.excerpt?.trim() || undefined;
-  return {
+  const description = post.metaDescription?.trim()
+    ? summarizePostDescription(post.metaDescription)
+    : `${raw} — an article from The Urology Place in San Antonio.`;
+  return pageMetadata({
+    path,
     title,
-    description: metaDesc,
-  };
+    description,
+    absoluteTitle,
+    image: blogShareImage(post.mainImage, raw),
+    openGraphType: "article",
+    publishedTime: isoTimestamp(post.publishedAt),
+    modifiedTime: isoTimestamp(post.updatedAt || post.publishedAt),
+  });
 }
 
 export default async function BlogPostPage({

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { ClinicMapEmbed } from "@/app/components/clinic-map-embed";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { YouTubeEmbed } from "@/app/components/youtube-embed";
 import {
@@ -11,6 +11,8 @@ import {
   HERO_IMAGE_SECTION,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
+
 const EMAIL = "messages@theupi.com";
 const RESEARCH_EMAIL = "research@theupi.com";
 const BILLING_EMAIL = "billing@theupi.com";
@@ -38,14 +40,15 @@ const ADDRESS_LINES = [
   "San Antonio, TX 78240",
 ] as const;
 
-const MAP_EMBED_URL =
-  "https://maps.google.com/maps?q=9618+Huebner+Road+Suite+120+San+Antonio+TX+78240&t=&z=15&ie=UTF8&iwloc=&output=embed";
 const MAPS_DIRECTIONS_URL =
   "https://www.google.com/maps/search/?api=1&query=9618+Huebner+Road+Suite+120+San+Antonio+TX+78240";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/patient-resources/contact-us",
   title: "Contact Our San Antonio Urologist",
-};
+  description:
+    "Call or message The Urology Place in San Antonio to schedule a urology appointment or ask a question about care.",
+});
 
 export default function ContactUsPage() {
   return (
@@ -227,17 +230,7 @@ export default function ContactUsPage() {
 
             <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
               <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden">
-                <iframe
-                  src={MAP_EMBED_URL}
-                  width="100%"
-                  height="340"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="The Urology Place location"
-                  className="block"
-                />
+                <ClinicMapEmbed height={340} />
                 <div className="p-4">
                   <p className="text-sm font-semibold text-slate-900">
                     {ADDRESS_LINES[0]}

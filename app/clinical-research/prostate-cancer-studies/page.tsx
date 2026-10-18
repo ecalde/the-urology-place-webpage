@@ -1,14 +1,17 @@
-import type { Metadata } from "next";
 import { ProstateCancerStudiesList } from "@/app/components/prostate-cancer-studies-list";
 import {
   HERO_IMAGE_SECTION,
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/clinical-research/prostate-cancer-studies",
   title: "Prostate Cancer Clinical Trials in San Antonio",
-};
+  description:
+    "Prostate cancer clinical trials at The Urology Place in San Antonio. See current studies and how to ask about eligibility.",
+});
 
 export default function ProstateCancerStudiesPage() {
   return (

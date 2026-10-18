@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Image from "next/image";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { BTN_MAKE_APPOINTMENT_HERO } from "@/app/lib/button-styles";
@@ -9,15 +8,17 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const HERO_BG = "/images/brachytherapy/maxresdefault.png";
 const PROCESS_IMG = encodeURI("/images/brachytherapy/rectal spacer process.png");
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/men/prostate-cancer/radiation-treatments/rectal-spacer",
   title: "Rectal Spacer for Prostate Radiation in San Antonio",
   description:
     "Rectal spacer information for prostate radiation treatment at The Urology Place in San Antonio.",
-};
+});
 
 export default function RectalSpacerPage() {
   return (

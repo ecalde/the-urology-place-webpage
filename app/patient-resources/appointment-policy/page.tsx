@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
 import {
   HERO_AFTER_SLIDE_BASE,
   HERO_IMAGE_SECTION,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const IMG_DIR = "/images/privacy policy hippa";
 const HERO_BG = `url(${encodeURI(`${IMG_DIR}/Doctor-with-Patient-scaled.jpg`)})`;
@@ -23,11 +23,12 @@ const FEE_ITEMS = [
   },
 ] as const;
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/patient-resources/appointment-policy",
   title: "Appointment Policy in San Antonio",
   description:
     "Missed appointment and late cancellation policy for The Urology Place, including notice requirements and applicable fees.",
-};
+});
 
 export default function AppointmentPolicyPage() {
   return (

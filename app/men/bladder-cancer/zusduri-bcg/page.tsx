@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
@@ -10,15 +9,17 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const HERO_BG = "/images/zusduri/zusduri.png";
 const TEAM_IMG = encodeURI("/images/zusduri/zusduri group.png");
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/men/bladder-cancer/zusduri-bcg",
   title: "Zusduri & BCG Bladder Cancer Treatment in San Antonio",
   description:
     "Advanced bladder cancer treatment options including Zusduri and BCG at The Urology Place in San Antonio.",
-};
+});
 
 export default function ZusduriAndBcgPage() {
   redirect("/men/bladder-cancer/zusduri-bcg-en-block");

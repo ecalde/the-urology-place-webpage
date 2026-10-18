@@ -1,9 +1,12 @@
-import type { Metadata } from "next";
 import { HERO_IMAGE_SECTION, HERO_TITLE_ON_IMAGE } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/patient-resources/insurance",
   title: "Urology Insurance in San Antonio",
-};
+  description:
+    "Insurance plans accepted at The Urology Place in San Antonio, including major PPO, HMO, Medicare, and Tricare options.",
+});
 
 type InNetworkItem = {
   label: string;

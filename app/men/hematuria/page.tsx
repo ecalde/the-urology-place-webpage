@@ -1,10 +1,13 @@
-import type { Metadata } from "next";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { HematuriaPageContent } from "@/app/components/hematuria-page";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/men/hematuria",
   title: "Hematuria Evaluation for Men in San Antonio",
-};
+  description:
+    "Blood in the urine evaluation for men at The Urology Place in San Antonio, from testing through a clear follow-up plan.",
+});
 
 export default function HematuriaMenPage() {
   return (

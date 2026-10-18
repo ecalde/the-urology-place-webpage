@@ -1,10 +1,13 @@
-import type { Metadata } from "next";
 import { BTN_PRIMARY_LARGE } from "@/app/lib/button-styles";
 import { HERO_IMAGE_SECTION, HERO_TITLE_ON_IMAGE } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/patient-resources/physician-referral",
   title: "Physician Referral in San Antonio",
-};
+  description:
+    "Referring offices can send a patient referral or procedure authorization to The Urology Place in San Antonio.",
+});
 
 export default function PhysicianReferralPage() {
   return (

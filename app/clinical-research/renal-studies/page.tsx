@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { ClinicalStudiesList } from "@/app/components/clinical-studies-list";
 import {
   HERO_IMAGE_SECTION,
@@ -7,14 +6,18 @@ import {
 } from "@/app/lib/hero";
 import { RENAL_STUDY_ELIGIBILITY } from "@/app/data/clinical-study-eligibility";
 import { RENAL_STUDIES } from "@/app/data/renal-studies";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const HERO_BG = encodeURI(
   "/images/kidney stones/photo-1512615199361-5c7a110a8d11-2880w.jpg",
 );
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/clinical-research/renal-studies",
   title: "Kidney Clinical Trials in San Antonio",
-};
+  description:
+    "Kidney and renal clinical trials at The Urology Place in San Antonio. Review study details and eligibility before you inquire.",
+});
 
 export default function RenalStudiesPage() {
   return (

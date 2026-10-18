@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { PrivacyPolicyNoticeAcknowledge } from "@/app/components/privacy-policy-notice-acknowledge";
 import {
   PrivacyPolicySanityContent,
@@ -10,16 +9,18 @@ import {
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
 import { client, privacyPolicyQuery } from "@/lib/sanity";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const IMG_DIR = "/images/privacy policy hippa";
 
 const HERO_BG = `url(${encodeURI(`${IMG_DIR}/Doctor-with-Patient-scaled.jpg`)})`;
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/patient-resources/privacy-policy-hipaa",
   title: "HIPAA Privacy Policy in San Antonio",
   description:
     "Privacy Policy for The Urology Place website and services. Contact us with questions about how we handle your information.",
-};
+});
 
 export const revalidate = 300;
 

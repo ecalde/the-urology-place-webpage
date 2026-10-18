@@ -1,9 +1,12 @@
-import type { Metadata } from "next";
 import { HERO_SUBTITLE_ON_LIGHT, HERO_TITLE_ON_LIGHT } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/patient-resources",
   title: "Patient Resources in San Antonio",
-};
+  description:
+    "Patient resources for The Urology Place in San Antonio, including contact, insurance, the patient portal, referrals, and policies.",
+});
 
 export default function PatientResourcesPage() {
   return (

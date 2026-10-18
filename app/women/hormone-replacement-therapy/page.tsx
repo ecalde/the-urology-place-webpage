@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import type { JSX } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,10 +11,14 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/women/hormone-replacement-therapy",
   title: "Hormone Replacement Therapy in San Antonio",
-};
+  description:
+    "Hormone replacement therapy for women at The Urology Place in San Antonio, including pellet treatment, symptoms, and follow-up care.",
+});
 
 const HERO_BG = encodeURI(
   "/images/hormone replacement therapy/photo-1491582990992-68ec88e070a3-2880w.jpg",

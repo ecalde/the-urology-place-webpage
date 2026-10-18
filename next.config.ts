@@ -32,6 +32,18 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: "/studio",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/studio/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
+  },
   compiler: {
     // Lets Next compile styled-components the same way for app + transpiled Sanity packages,
     // avoiding duplicate ThemeProvider / useTheme context from split SC bundles.

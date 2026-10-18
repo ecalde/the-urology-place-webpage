@@ -1,19 +1,22 @@
-import type { Metadata } from "next";
 import Image from "next/image";
 import {
   HERO_FIXED_BACKDROP,
   HERO_IMAGE_SECTION,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+import { pageMetadata } from "@/app/lib/site-metadata";
 
 const HERO_BG = encodeURI("/images/join our team/team-hands-in-middle-white-background.jpg").replace(
   /\+/g,
   "%2B",
 );
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
+  path: "/join-our-team",
   title: "Urology Jobs in San Antonio",
-};
+  description:
+    "Urology careers at The Urology Place in San Antonio. See open roles and how to join the clinical team.",
+});
 
 export default function JoinOurTeamPage() {
   return (
