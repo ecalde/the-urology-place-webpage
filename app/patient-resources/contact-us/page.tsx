@@ -89,7 +89,7 @@ export default function ContactUsPage() {
             <p className="mx-auto mt-4 max-w-2xl text-slate-700 leading-relaxed">
               Call for scheduling and the quickest answers to most questions. For
               email, choose a department address below—please include your name,
-              date of birth, and the best time to reach you.
+              phone number, and a callback time.
             </p>
             <div className="mt-8 flex justify-center">
               <a

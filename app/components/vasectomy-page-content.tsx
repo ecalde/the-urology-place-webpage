@@ -24,7 +24,7 @@ const HERO_BG = encodeURI(
 const IMG = (name: string) => `/images/vasectomy/${name}`;
 
 const FEATURES = [
-  "In office anasthesia for extra comfort",
+  "In office anesthesia for extra comfort",
   "Less than 1% failure rate",
   "No scalpel means less bleeding, risk of infection and pain",
   "A single opening for the procedure",
