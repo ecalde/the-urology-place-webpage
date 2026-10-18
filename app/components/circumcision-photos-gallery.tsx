@@ -51,9 +51,8 @@ export function CircumcisionPhotosGallery({ galleries }: Props) {
               <li key={src} className={IMAGE_CARD_SQUARE}>
                 <Image
                   src={src}
-                  alt={`${gallery.label} — clinical photograph ${index + 1} of ${gallery.imageSrcs.length}`}
+                  alt={`${gallery.label} — clinical photograph ${index + 1} of ${gallery.imageSrcs.length}, shown with consent for medical education`}
                   fill
-                  unoptimized
                   className="object-cover object-center"
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 50vw, 33vw"
                 />

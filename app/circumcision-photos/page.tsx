@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import { CircumcisionPhotosGallery } from "@/app/components/circumcision-photos-gallery";
+import { CircumcisionPhotosGate } from "@/app/components/circumcision-photos-gate";
 import {
   HERO_AFTER_SLIDE_BASE,
   HERO_IMAGE_SECTION,
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
-import { loadCircumcisionPatientGalleries } from "@/app/lib/circumcision-photos";
 
-const HERO_BG = `/images/${encodeURIComponent("for medical educational purpose")}/${encodeURIComponent("Marble+2-2880w.png")}`;
+const HERO_BG = "/images/medical-educational-purpose/Marble+2-2880w.png";
 
 export const metadata: Metadata = {
   title: "Adult Circumcision Photos in San Antonio",
@@ -20,9 +19,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function CircumcisionPhotosPage() {
-  const galleries = await loadCircumcisionPatientGalleries();
-
+export default function CircumcisionPhotosPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900 antialiased">
       <section
@@ -41,8 +38,8 @@ export default async function CircumcisionPhotosPage() {
             <span className="block">Before and After Photos</span>
           </h1>
           <p className={`mt-6 max-w-3xl leading-relaxed ${HERO_SUBTITLE_ON_IMAGE}`}>
-            Below are anatomical photos of adult circumcisions performed at The Urology
-            Place by Dr. Naveen Kella with patient consent
+            Adult circumcision photographs published with patient consent for medical
+            education only.
           </p>
         </div>
       </section>
@@ -50,9 +47,7 @@ export default async function CircumcisionPhotosPage() {
       <section
         className={`${HERO_AFTER_SLIDE_BASE} bg-white px-6 py-16 md:py-24 lg:py-28`}
       >
-        <div className="mx-auto max-w-screen-2xl">
-          <CircumcisionPhotosGallery galleries={galleries} />
-        </div>
+        <CircumcisionPhotosGate />
       </section>
     </main>
   );

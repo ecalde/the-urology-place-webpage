@@ -21,7 +21,7 @@ try {
 }
 
 const DEFAULT_TARGETS = [
-  "public/images/for medical educational purpose",
+  "public/images/medical-educational-purpose",
   "public/images/zusduri/zusduri group.png",
   "public/images/join our team/team-hands-in-middle-white-background.jpg",
 ];

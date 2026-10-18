@@ -57,8 +57,9 @@ export function AdultCircumcisionPhotosCta() {
               Before you continue
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-slate-700 md:text-base">
-              Be cautious as the next page contains anatomical photos of Adult Circumcisions performed
-              at The Urology Place with Dr. Naveen Kella.
+              The next page contains graphic clinical photographs of adult circumcisions. They are
+              published with each patient&apos;s consent and are for medical education only. You must
+              be 18 or older to view them.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
               <button type="button" onClick={close} className={BTN_SECONDARY}>

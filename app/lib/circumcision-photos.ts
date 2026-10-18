@@ -1,10 +1,10 @@
 import { readdir, stat } from "fs/promises";
 import path from "path";
 
-/** Matches the folder name in `public/images/` — do not rename (PROJECT assets). */
-export const CIRCUMCISION_PHOTOS_PUBLIC_ROOT = "for medical educational purpose";
+/** `public/images/medical-educational-purpose/` — hyphenated so photo URLs have no spaces. */
+export const CIRCUMCISION_PHOTOS_PUBLIC_ROOT = "medical-educational-purpose";
 
-const PATIENT_DIR = /^patient ([a-z])$/i;
+const PATIENT_DIR = /^patient-([a-z])$/i;
 
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp)$/i;
 
@@ -13,7 +13,7 @@ export type CircumcisionPatientGallery = {
   label: string;
   /** Optional clinical context shown under the patient heading (above images). */
   description?: string;
-  /** URL paths safe for `next/image` `src` (segments encoded). */
+  /** Public URL paths for `next/image` (`/images/...`, no spaces). */
   imageSrcs: string[];
 };
 
@@ -24,23 +24,14 @@ const PATIENT_CASE_NOTES: Partial<Record<string, string>> = {
   S: "22 y/o who received a circumcision revision from Dr. Naveen Kella. He was unhappy with the appearance of his initial circumcision he received at the age of 6.",
 };
 
-function encodePublicImageSegments(...segments: string[]): string {
-  return segments.map((s) => encodeURIComponent(s)).join("/");
-}
-
-/** Build `/images/...` URL under the educational photos root + patient folder + filename. */
+/** Build `/images/medical-educational-purpose/patient-a/001.jpg`. */
 function circumcisionPhotoSrc(patientLetter: string, filename: string): string {
   const letter = patientLetter.toLowerCase();
-  const folder = `patient ${letter}`;
-  const prefix = `/images/${encodePublicImageSegments(
-    CIRCUMCISION_PHOTOS_PUBLIC_ROOT,
-    folder,
-  )}`;
-  return `${prefix}/${encodeURIComponent(filename)}`;
+  return `/images/${CIRCUMCISION_PHOTOS_PUBLIC_ROOT}/patient-${letter}/${encodeURIComponent(filename)}`;
 }
 
 /**
- * Reads `public/images/for medical educational purpose/patient a` … `patient z`
+ * Reads `public/images/medical-educational-purpose/patient-a` … `patient-z`
  * (single-letter folders only), returns galleries with sorted image filenames.
  * Skips folders with no image files. Works at build time and on the Node server.
  */
