@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { MensWellnessTabs } from "./mens-wellness-tabs";
@@ -7,6 +8,10 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "Men's Wellness in San Antonio",
+};
 
 const DIFFERENTIATORS = [
   { text: "Experienced\nBoard Certified\nUrologists" },

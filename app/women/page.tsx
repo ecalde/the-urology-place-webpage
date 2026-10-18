@@ -9,7 +9,7 @@ import {
 } from "@/app/lib/hero";
 
 export const metadata: Metadata = {
-  title: "Women's Urologic Care",
+  title: "Women's Urology in San Antonio",
   description:
     "Women's urologic and pelvic health care at The Urology Place in San Antonio, including hematuria, Emsella for incontinence, hormone replacement therapy, and kidney stones.",
 };

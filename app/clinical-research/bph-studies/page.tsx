@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { ClinicalStudiesContactSection } from "@/app/components/clinical-studies-contact-section";
 import { ClinicalStudiesList } from "@/app/components/clinical-studies-list";
@@ -6,6 +7,10 @@ import { BPH_STUDIES } from "@/app/data/bph-studies";
 import { BPH_STAGE_ILLUSTRATIONS } from "@/app/data/bph-stage-illustrations";
 import { BPH_STUDY_ELIGIBILITY } from "@/app/data/clinical-study-eligibility";
 import { HERO_IMAGE_SECTION, HERO_TITLE_BPH_TRIALS } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "BPH Clinical Trials in San Antonio",
+};
 
 const HERO_BG = "/images/bph%20studies/pexels-photo-4194857-2880w.jpeg";
 

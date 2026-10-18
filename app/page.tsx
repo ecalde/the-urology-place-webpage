@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -15,6 +16,12 @@ import {
   HERO_TITLE_ON_IMAGE,
 } from "./lib/hero";
 import { client, homeAnnouncementsQuery, urlFor } from "@/lib/sanity";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Urologist in San Antonio | The Urology Place",
+  },
+};
 
 /** ISR: refetch Sanity-driven home content on production ~every60s (no webhook). Blog routes stay dynamic via searchParams / [slug]. */
 export const revalidate = 60;

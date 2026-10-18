@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { JSX } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,6 +12,10 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "Hormone Replacement Therapy in San Antonio",
+};
 
 const HERO_BG = encodeURI(
   "/images/hormone replacement therapy/photo-1491582990992-68ec88e070a3-2880w.jpg",

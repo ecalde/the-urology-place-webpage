@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { YouTubeEmbed } from "@/app/components/youtube-embed";
 import {
@@ -41,6 +42,10 @@ const MAP_EMBED_URL =
   "https://maps.google.com/maps?q=9618+Huebner+Road+Suite+120+San+Antonio+TX+78240&t=&z=15&ie=UTF8&iwloc=&output=embed";
 const MAPS_DIRECTIONS_URL =
   "https://www.google.com/maps/search/?api=1&query=9618+Huebner+Road+Suite+120+San+Antonio+TX+78240";
+
+export const metadata: Metadata = {
+  title: "Contact Our San Antonio Urologist",
+};
 
 export default function ContactUsPage() {
   return (

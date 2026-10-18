@@ -49,7 +49,7 @@ const INSTRUCTIONS = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Post-Insertion Instructions",
+  title: "Hormone Pellet Aftercare in San Antonio",
   description:
     "Post-insertion instructions for female hormone replacement therapy pellet treatment at The Urology Place.",
 };

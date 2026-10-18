@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ClinicalStudiesContactSection } from "@/app/components/clinical-studies-contact-section";
 import { ClinicalStudiesList } from "@/app/components/clinical-studies-list";
 import { UrinaryIncontinenceStudiesSupplementary } from "@/app/components/urinary-incontinence-studies-supplementary";
@@ -7,6 +8,10 @@ import { HERO_IMAGE_SECTION, HERO_TITLE_ON_IMAGE } from "@/app/lib/hero";
 
 const HERO_BG =
   "/images/overactive%20bladder%20studies/pexels-photo-1705093-2880w.jpeg";
+
+export const metadata: Metadata = {
+  title: "Urinary Incontinence Clinical Trials in San Antonio",
+};
 
 export default function UrinaryIncontinenceStudiesPage() {
   return (

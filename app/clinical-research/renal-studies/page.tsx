@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ClinicalStudiesList } from "@/app/components/clinical-studies-list";
 import {
   HERO_IMAGE_SECTION,
@@ -10,6 +11,10 @@ import { RENAL_STUDIES } from "@/app/data/renal-studies";
 const HERO_BG = encodeURI(
   "/images/kidney stones/photo-1512615199361-5c7a110a8d11-2880w.jpg",
 );
+
+export const metadata: Metadata = {
+  title: "Kidney Clinical Trials in San Antonio",
+};
 
 export default function RenalStudiesPage() {
   return (

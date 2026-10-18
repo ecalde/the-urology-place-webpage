@@ -15,7 +15,7 @@ const HERO_BG = "/images/zusduri/zusduri.png";
 const TEAM_IMG = encodeURI("/images/zusduri/zusduri group.png");
 
 export const metadata: Metadata = {
-  title: "Zusduri, BCG & En Block",
+  title: "Zusduri & BCG Bladder Cancer Treatment in San Antonio",
   description:
     "Advanced bladder cancer treatment options including Zusduri and BCG at The Urology Place in San Antonio.",
 };

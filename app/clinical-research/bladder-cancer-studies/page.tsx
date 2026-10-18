@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ClinicalStudiesList } from "@/app/components/clinical-studies-list";
 import {
   HERO_IMAGE_SECTION,
@@ -8,6 +9,10 @@ import { BLADDER_CANCER_STUDIES } from "@/app/data/bladder-cancer-studies";
 import { BLADDER_CANCER_STUDY_ELIGIBILITY } from "@/app/data/clinical-study-eligibility";
 
 const HERO_BG = encodeURI("/images/bladder cancer/Blog_Post-Bladder_Cancer.webp");
+
+export const metadata: Metadata = {
+  title: "Bladder Cancer Clinical Trials in San Antonio",
+};
 
 export default function BladderCancerStudiesPage() {
   return (

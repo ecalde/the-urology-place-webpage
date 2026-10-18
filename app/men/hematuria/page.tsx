@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { HematuriaPageContent } from "@/app/components/hematuria-page";
+
+export const metadata: Metadata = {
+  title: "Hematuria Evaluation for Men in San Antonio",
+};
 
 export default function HematuriaMenPage() {
   return (

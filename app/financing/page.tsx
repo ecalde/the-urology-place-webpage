@@ -7,7 +7,7 @@ import {
 } from "@/app/lib/hero";
 
 export const metadata: Metadata = {
-  title: "Financing",
+  title: "Urology Patient Financing in San Antonio",
   description:
     "Explore flexible payment options for care at The Urology Place with Cherry patient financing.",
 };

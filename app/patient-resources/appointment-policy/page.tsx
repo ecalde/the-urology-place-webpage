@@ -24,7 +24,7 @@ const FEE_ITEMS = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Appointment Policy | Patient Resources | The Urology Place",
+  title: "Appointment Policy in San Antonio",
   description:
     "Missed appointment and late cancellation policy for The Urology Place, including notice requirements and applicable fees.",
 };

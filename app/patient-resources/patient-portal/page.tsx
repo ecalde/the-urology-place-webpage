@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { BTN_PRIMARY, BTN_SECONDARY } from "@/app/lib/button-styles";
 import {
@@ -12,6 +13,10 @@ const FAQ_HREF =
 const SUPPORT_HREF = "https://app.elationemr.com/support/";
 const TROUBLESHOOTING_HREF =
   "https://help.elationhealth.com/articles/User-Accounts-Guide-Troubleshooting-account-login-issues";
+
+export const metadata: Metadata = {
+  title: "Patient Portal in San Antonio",
+};
 
 export default function PatientPortalPage() {
   return (

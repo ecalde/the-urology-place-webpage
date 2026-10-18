@@ -23,7 +23,7 @@ const CONTENT_CARD =
   "rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm ring-1 ring-slate-200/60 md:p-8";
 
 export const metadata: Metadata = {
-  title: "Brachytherapy",
+  title: "Prostate Brachytherapy in San Antonio",
   description:
     "Interventional radiotherapy and LDR brachytherapy for prostate cancer at The Urology Place in San Antonio.",
 };

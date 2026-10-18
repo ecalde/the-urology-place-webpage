@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import {
   HERO_FIXED_BACKDROP,
@@ -9,6 +10,10 @@ const HERO_BG = encodeURI("/images/join our team/team-hands-in-middle-white-back
   /\+/g,
   "%2B",
 );
+
+export const metadata: Metadata = {
+  title: "Urology Jobs in San Antonio",
+};
 
 export default function JoinOurTeamPage() {
   return (

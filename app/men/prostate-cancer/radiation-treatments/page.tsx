@@ -6,7 +6,7 @@ const HERO_BG = encodeURI(
 );
 
 export const metadata: Metadata = {
-  title: "Radiation Treatments",
+  title: "Prostate Radiation Treatment in San Antonio",
   description:
     "Radiation treatment planning for prostate cancer at The Urology Place in San Antonio, including guidance on brachytherapy and rectal spacer options.",
 };

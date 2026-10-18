@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
+
+export const metadata: Metadata = {
+  title: "Schedule Prostate Artery Embolization in San Antonio",
+};
 
 export default function ContactUsForPaePage() {
   return (

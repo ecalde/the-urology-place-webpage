@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { AnesthesiaAccordion } from "../components/anesthesia-accordion";
 import {
@@ -5,6 +6,10 @@ import {
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "In-Office Anesthesia in San Antonio",
+};
 
 export default function InOfficeAnesthesiaPage() {
   return (

@@ -14,7 +14,7 @@ const HERO_BG = "/images/brachytherapy/maxresdefault.png";
 const PROCESS_IMG = encodeURI("/images/brachytherapy/rectal spacer process.png");
 
 export const metadata: Metadata = {
-  title: "Rectal Spacer",
+  title: "Rectal Spacer for Prostate Radiation in San Antonio",
   description:
     "Rectal spacer information for prostate radiation treatment at The Urology Place in San Antonio.",
 };

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "The Urology Place",
+    default: "Urologist in San Antonio | The Urology Place",
     template: "%s | The Urology Place",
   },
   description: "The Urology Place in San Antonio, TX.",

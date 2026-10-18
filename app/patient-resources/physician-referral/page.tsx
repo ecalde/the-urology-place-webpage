@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { BTN_PRIMARY_LARGE } from "@/app/lib/button-styles";
 import { HERO_IMAGE_SECTION, HERO_TITLE_ON_IMAGE } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "Physician Referral in San Antonio",
+};
 
 export default function PhysicianReferralPage() {
   return (

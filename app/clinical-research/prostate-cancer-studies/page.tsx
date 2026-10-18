@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import { ProstateCancerStudiesList } from "@/app/components/prostate-cancer-studies-list";
 import {
   HERO_IMAGE_SECTION,
   HERO_SUBTITLE_ON_IMAGE,
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "Prostate Cancer Clinical Trials in San Antonio",
+};
 
 export default function ProstateCancerStudiesPage() {
   return (

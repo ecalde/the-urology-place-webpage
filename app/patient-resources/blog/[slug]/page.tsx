@@ -250,13 +250,18 @@ export async function generateMetadata({
     { slug },
   );
   if (!post?.title) {
-    return { title: "Blog" };
+    return { title: "Urology Blog in San Antonio" };
   }
-  const metaTitle = post.seoTitle?.trim() || post.title;
+  const raw = (post.seoTitle?.trim() || post.title).trim();
+  const title = /the urology place/i.test(raw)
+    ? { absolute: raw }
+    : /san antonio/i.test(raw)
+      ? raw
+      : `${raw} in San Antonio`;
   const metaDesc =
     post.seoDescription?.trim() || post.excerpt?.trim() || undefined;
   return {
-    title: metaTitle,
+    title,
     description: metaDesc,
   };
 }

@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { HERO_IMAGE_SECTION, HERO_TITLE_ON_IMAGE } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "Urology Insurance in San Antonio",
+};
 
 type InNetworkItem = {
   label: string;

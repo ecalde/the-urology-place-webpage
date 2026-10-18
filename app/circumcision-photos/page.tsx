@@ -11,7 +11,7 @@ import { loadCircumcisionPatientGalleries } from "@/app/lib/circumcision-photos"
 const HERO_BG = `/images/${encodeURIComponent("for medical educational purpose")}/${encodeURIComponent("Marble+2-2880w.png")}`;
 
 export const metadata: Metadata = {
-  title: "Circumcision Photos",
+  title: "Adult Circumcision Photos in San Antonio",
   description:
     "Before and after photographs of adult circumcisions performed at The Urology Place in San Antonio.",
   robots: {

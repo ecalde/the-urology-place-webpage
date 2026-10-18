@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { YouTubeEmbed } from "@/app/components/youtube-embed";
 import {
   AboutUsTeamFromSanity,
@@ -11,6 +12,10 @@ import {
   HERO_TITLE_ON_IMAGE,
 } from "@/app/lib/hero";
 import { client, teamMembersQuery } from "@/lib/sanity";
+
+export const metadata: Metadata = {
+  title: "About Our Urologists in San Antonio",
+};
 
 /** Refresh team content periodically without a full redeploy. */
 export const revalidate = 300;

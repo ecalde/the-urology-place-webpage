@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { HERO_SUBTITLE_ON_LIGHT, HERO_TITLE_ON_LIGHT } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "Urology Clinical Trials in San Antonio",
+};
 
 export default function ClinicalResearchPage() {
   return (

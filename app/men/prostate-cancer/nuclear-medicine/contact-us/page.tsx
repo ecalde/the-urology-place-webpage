@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
+
+export const metadata: Metadata = {
+  title: "Schedule Pluvicto Treatment in San Antonio",
+};
 
 export default function ContactUsForNuclearMedicinePage() {
   return (

@@ -9,7 +9,7 @@ import {
 } from "@/app/lib/hero";
 
 export const metadata: Metadata = {
-  title: "Men's Urologic Care",
+  title: "Men's Urology in San Antonio",
   description:
     "Men's urologic care at The Urology Place in San Antonio and Austin, including prostate cancer, enlarged prostate, sexual health, vasectomy, bladder cancer, and kidney stones.",
 };

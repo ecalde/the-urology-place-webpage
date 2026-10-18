@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { BTN_PRIMARY } from "@/app/lib/button-styles";
@@ -9,6 +10,10 @@ import {
   urlFor,
 } from "@/lib/sanity";
 import { HERO_SUBTITLE_ON_LIGHT, HERO_TITLE_ON_LIGHT } from "@/app/lib/hero";
+
+export const metadata: Metadata = {
+  title: "Urology Blog in San Antonio",
+};
 
 type BlogPost = {
   _id: string;
