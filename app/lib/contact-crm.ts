@@ -5,8 +5,9 @@ import { createHmac, randomUUID } from "node:crypto";
 import type { NormalizedContact } from "@/app/lib/contact-validation";
 
 /**
- * Server-only dual-write client for the Phase 7B Apps Script ingest contract.
- * The browser never calls this module. Trello remains the primary success path.
+ * Server-only client for the Apps Script website ingest contract.
+ * The browser never calls this module. The contact route requires
+ * outcome "success" before it tells the visitor the form was received.
  */
 
 const CRM_API_VERSION = 1;
@@ -417,9 +418,10 @@ function parseCrmApplicationResult(
 }
 
 /**
- * Best-effort Google CRM ingest. Never throws.
- * When CRM_INGEST_ENABLED is not exactly "true", this returns immediately
- * and does not open a network request.
+ * Google CRM ingest for one website submission. Never throws.
+ * When CRM_INGEST_ENABLED is not exactly "true", this returns
+ * { outcome: "skipped" } and does not open a network request.
+ * Callers must treat every non-success outcome as a failed save.
  */
 export async function ingestContactToCrm(
   contact: NormalizedContact,

@@ -3,11 +3,22 @@ export type ClinicalStudyStatus =
   | "Active, Not Enrolling"
   | "Coming Soon";
 
+export type ClinicalStudySection = {
+  title: string;
+  body: string;
+};
+
 export type ClinicalStudy = {
   name: string;
   fullName?: string;
+  /** Search-oriented title shown in place of the study acronym. */
+  headline?: string;
   status: ClinicalStudyStatus;
   description: string;
+  /** Extra paragraphs between the lead and any named sections. */
+  paragraphs?: string[];
+  sections?: ClinicalStudySection[];
+  closing?: string;
   nct?: string;
   image: string;
   imageAlt: string;

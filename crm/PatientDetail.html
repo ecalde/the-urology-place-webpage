@@ -278,7 +278,7 @@
         display: flex;
         flex-direction: column;
         gap: 10px;
-        margin-bottom: 16px;
+        margin-top: 16px;
       }
 
       .patient-action-group {
@@ -311,7 +311,7 @@
 
       .patient-action-row-primary {
         grid-template-columns:
-          repeat(3, minmax(0, 1fr));
+          repeat(2, minmax(0, 1fr));
       }
 
       .patient-action-row-secondary {
@@ -410,13 +410,43 @@
       }
 
       .contact-action-grid {
-        display: grid;
-        grid-template-columns:
-          minmax(0, 1fr)
-          minmax(0, 1.15fr)
-          auto;
-        gap: 8px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .choice-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .choice-chip {
+        display: inline-flex;
         align-items: center;
+        gap: 6px;
+        min-height: 34px;
+        margin: 0;
+        padding: 0 10px;
+        border: 1px solid #dadce0;
+        border-radius: 999px;
+        background: white;
+        color: #202124;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .choice-chip input {
+        margin: 0;
+      }
+
+      .follow-up-time-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .follow-up-time-row .action-input {
+        flex: 1 1 0;
       }
 
       .contact-note {
@@ -966,505 +996,26 @@
         ></div>
       </div>
 
-      <div class="patient-action-workspace">
-
-        <div
-          id="action-message"
-          class="action-message"
-        ></div>
-
-        <div class="patient-action-group">
-
-          <div class="patient-action-group-label">
-            Patient Actions
-          </div>
-
-          <div class="patient-action-row-primary">
-
-            <div class="action-bar">
-
-              <div class="action-bar-title">
-                Assignment
-              </div>
-
-              <div class="assignment-controls">
-
-                <select
-                  id="assignment-select"
-                  class="action-select"
-                >
-
-                  <option
-                    value=""
-                    <? if (!patient.workflow.assignedTo) { ?>
-                      selected
-                    <? } ?>
-                  >
-                    Unassigned
-                  </option>
-
-                  <? patient.options.assignees.forEach(
-                    function(assignee) {
-                  ?>
-
-                    <option
-                      value="<?= assignee ?>"
-                      <? if (
-                        assignee ===
-                        patient.workflow.assignedTo
-                      ) { ?>
-                        selected
-                      <? } ?>
-                    >
-                      <?= assignee ?>
-                    </option>
-
-                  <? }); ?>
-
-                </select>
-
-                <button
-                  type="button"
-                  id="save-assignment-button"
-                  class="action-button"
-                  onclick="saveAssignment()"
-                >
-                  Save Assignment
-                </button>
-
-              </div>
-
-            </div>
-
-
-            <div class="workflow-action-card">
-
-              <div class="workflow-action-header">
-                Scheduling
-              </div>
-
-              <div class="workflow-action-grid">
-
-                <input
-                  type="date"
-                  id="scheduled-date-input"
-                  class="action-input"
-                  value="<?= patient.workflow.scheduledDateInput ?>"
-                >
-
-                <textarea
-                  id="schedule-note-input"
-                  class="action-textarea"
-                  placeholder="Optional scheduling note"
-                ><?= patient.workflow.scheduledDateNote || "" ?></textarea>
-
-                <div class="action-help">
-                  Leave the date blank only when moving a lead
-                  to Scheduled before an appointment date is known.
-                </div>
-
-                <div class="action-buttons">
-
-                  <button
-                    type="button"
-                    id="save-schedule-button"
-                    class="action-button"
-                    onclick="savePatientSchedule()"
-                  >
-                    Save Schedule
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
-
-
-            <div class="workflow-action-card">
-
-              <div class="workflow-action-header">
-                Future Follow-Up
-              </div>
-
-              <div class="workflow-action-grid">
-
-                <input
-                  type="date"
-                  id="follow-up-date-input"
-                  class="action-input"
-                  value="<?= patient.workflow.nextFollowUpInput ?>"
-                >
-
-                <textarea
-                  id="follow-up-note-input"
-                  class="action-textarea"
-                  placeholder="Optional follow-up note"
-                ></textarea>
-
-                <div class="action-help">
-                  Future follow-up dates are available only
-                  for Open Lead / Follow Up.
-                </div>
-
-                <div class="action-buttons">
-
-                  <button
-                    type="button"
-                    id="save-follow-up-button"
-                    class="action-button"
-                    onclick="savePatientFollowUp()"
-                  >
-                    Set / Update Follow-Up
-                  </button>
-
-                  <button
-                    type="button"
-                    id="clear-follow-up-button"
-                    class="secondary-action-button"
-                    onclick="clearPatientFollowUp()"
-                  >
-                    Clear Follow-Up
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div class="patient-action-row-secondary">
-
-            <div class="contact-action">
-
-              <div class="contact-action-header">
-                Record Contact Attempt
-              </div>
-
-              <div class="contact-action-grid">
-
-                <select
-                  id="contact-method-select"
-                  class="action-select"
-                >
-                  <option value="">
-                    Contact Method
-                  </option>
-
-                  <? patient.options.contactMethods.forEach(
-                    function(method) {
-                  ?>
-
-                    <option value="<?= method ?>">
-                      <?= method ?>
-                    </option>
-
-                  <? }); ?>
-                </select>
-
-
-                <select
-                  id="contact-outcome-select"
-                  class="action-select"
-                >
-                  <option value="">
-                    Contact Outcome
-                  </option>
-
-                  <? patient.options.contactOutcomes.forEach(
-                    function(outcome) {
-                  ?>
-
-                    <option value="<?= outcome ?>">
-                      <?= outcome ?>
-                    </option>
-
-                  <? }); ?>
-                </select>
-
-
-                <label class="reached-control">
-
-                  <input
-                    type="checkbox"
-                    id="reached-patient-checkbox"
-                  >
-
-                  Patient reached
-
-                </label>
-
-
-                <textarea
-                  id="contact-attempt-note"
-                  class="contact-note"
-                  placeholder="Optional note about this contact attempt"
-                ></textarea>
-
-
-                <div class="action-buttons">
-
-                  <button
-                    type="button"
-                    id="record-attempt-button"
-                    class="action-button"
-                    onclick="recordContactAttempt()"
-                  >
-                    Record Attempt
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
-
-
-            <div class="workflow-action-card">
-
-              <div class="workflow-action-header">
-                Workflow Movement
-              </div>
-
-              <div class="workflow-action-grid">
-
-                <select
-                  id="workflow-target-select"
-                  class="action-select"
-                  onchange="updateWorkflowMovementFields()"
-                >
-                  <option value="">
-                    Select Workflow Destination
-                  </option>
-
-                  <option
-                    value="Open Lead / Follow Up"
-                  >
-                    Open Lead / Follow Up
-                  </option>
-
-                  <option
-                    value="Case Lost"
-                  >
-                    Case Lost
-                  </option>
-
-                  <option
-                    value="Unrelated"
-                  >
-                    Unrelated
-                  </option>
-                </select>
-
-
-                <div
-                  id="case-lost-reason-group"
-                  hidden
-                >
-                  <select
-                    id="case-lost-reason-select"
-                    class="action-select"
-                  >
-                    <option value="">
-                      Case Lost Reason
-                    </option>
-
-                    <? patient.options.caseLostReasons.forEach(
-                      function(reason) {
-                    ?>
-
-                      <option value="<?= reason ?>">
-                        <?= reason ?>
-                      </option>
-
-                    <? }); ?>
-                  </select>
-                </div>
-
-
-                <div
-                  id="unrelated-type-group"
-                  hidden
-                >
-                  <select
-                    id="unrelated-type-select"
-                    class="action-select"
-                  >
-                    <option value="">
-                      Unrelated Type
-                    </option>
-
-                    <? patient.options.unrelatedTypes.forEach(
-                      function(type) {
-                    ?>
-
-                      <option value="<?= type ?>">
-                        <?= type ?>
-                      </option>
-
-                    <? }); ?>
-                  </select>
-                </div>
-
-
-                <textarea
-                  id="workflow-move-note"
-                  class="action-textarea"
-                  placeholder="Optional workflow note"
-                ></textarea>
-
-
-                <div
-                  id="workflow-move-help"
-                  class="action-help"
-                >
-                  Use the Scheduling card above to move a lead into Scheduled.
-                </div>
-
-
-                <div class="action-buttons">
-
-                  <button
-                    type="button"
-                    id="move-workflow-button"
-                    class="action-button"
-                    onclick="saveWorkflowMovement()"
-                  >
-                    Move Lead
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <div class="patient-action-group patient-action-group-workflow">
-
-          <div class="patient-action-group-label">
-            Workflow
-          </div>
-
-          <div class="patient-action-row-completion">
-
-            <div
-              class="workflow-action-card wide"
-            >
-
-              <div class="workflow-action-header">
-                Workflow Completion
-              </div>
-
-              <div class="workflow-action-grid">
-
-                <textarea
-                  id="completion-note-input"
-                  class="action-textarea"
-                  placeholder="Optional completion or reopen note"
-                ></textarea>
-
-                <div
-                  id="completion-action-help"
-                  class="action-help"
-                >
-                  Scheduled, Case Lost, and Unrelated workflows can be marked complete.
-                </div>
-
-                <div class="action-buttons">
-
-                  <button
-                    type="button"
-                    id="complete-workflow-button"
-                    class="action-button"
-                    onclick="completePatientWorkflow()"
-                  >
-                    Mark Complete
-                  </button>
-
-                  <button
-                    type="button"
-                    id="reopen-workflow-button"
-                    class="secondary-action-button"
-                    onclick="reopenPatientWorkflow()"
-                  >
-                    Reopen Workflow
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          <div class="patient-action-row-completion">
-
-            <div class="workflow-action-card wide">
-
-              <div class="workflow-action-header">
-                Archive
-              </div>
-
-              <div class="workflow-action-grid">
-
-                <textarea
-                  id="archive-reason-input"
-                  class="action-textarea"
-                  placeholder="Optional archive note"
-                ></textarea>
-
-                <div
-                  id="archive-action-help"
-                  class="action-help"
-                >
-                  Archive removes the lead from the Board. It does not delete the record.
-                </div>
-
-                <div class="action-buttons">
-
-                  <button
-                    type="button"
-                    id="archive-lead-button"
-                    class="action-button"
-                    onclick="archivePatientFromDetail()"
-                  >
-                    Archive Patient
-                  </button>
-
-                  <button
-                    type="button"
-                    id="unarchive-lead-button"
-                    class="secondary-action-button"
-                    onclick="unarchivePatientFromDetail()"
-                  >
-                    Unarchive Patient
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
       <div class="workspace">
 
         <!-- LEFT SIDE -->
         <div class="details-grid">
+
+          <section class="section wide">
+
+            <h2 class="section-title">
+              Original Patient Message
+            </h2>
+
+            <div class="value message">
+              <?=
+                patient.patient.message ||
+                "No message provided."
+              ?>
+            </div>
+
+          </section>
+
 
           <section class="section">
 
@@ -1547,22 +1098,6 @@
 
             <div class="field">
               <div class="label">
-                Assigned To
-              </div>
-
-              <div
-                class="value"
-                id="assigned-to-value"
-              >
-                <?=
-                  patient.workflow.assignedTo ||
-                  "Unassigned"
-                ?>
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="label">
                 Contact Attempts
               </div>
 
@@ -1636,22 +1171,6 @@
                   "—"
                 ?>
               </div>
-            </div>
-
-          </section>
-
-
-          <section class="section wide">
-
-            <h2 class="section-title">
-              Original Patient Message
-            </h2>
-
-            <div class="value message">
-              <?=
-                patient.patient.message ||
-                "No message provided."
-              ?>
             </div>
 
           </section>
@@ -2082,6 +1601,333 @@
         </aside>
 
       </div>
+
+
+      <div class="patient-action-workspace">
+
+        <div
+          id="action-message"
+          class="action-message"
+        ></div>
+
+        <div class="patient-action-group">
+
+          <div class="patient-action-group-label">
+            Patient Actions
+          </div>
+
+          <div class="patient-action-row-primary">
+
+            <div class="workflow-action-card">
+
+              <div class="workflow-action-header">
+                Scheduling
+              </div>
+
+              <div class="workflow-action-grid">
+
+                <input
+                  type="date"
+                  id="scheduled-date-input"
+                  class="action-input"
+                  value="<?= patient.workflow.scheduledDateInput ?>"
+                >
+
+                <textarea
+                  id="schedule-note-input"
+                  class="action-textarea"
+                  placeholder="Optional scheduling note"
+                ><?= patient.workflow.scheduledDateNote || "" ?></textarea>
+
+                <div class="action-help">
+                  Leave the date blank only when moving a lead
+                  to Scheduled before an appointment date is known.
+                </div>
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="save-schedule-button"
+                    class="action-button"
+                    onclick="savePatientSchedule()"
+                  >
+                    Save Schedule
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="workflow-action-card">
+
+              <div class="workflow-action-header">
+                Future Follow-Up
+              </div>
+
+              <div class="workflow-action-grid">
+
+                <input
+                  type="date"
+                  id="follow-up-date-input"
+                  class="action-input"
+                  value="<?= patient.workflow.nextFollowUpInput ?>"
+                >
+
+                <div class="follow-up-time-row">
+                  <input
+                    type="time"
+                    id="follow-up-start-input"
+                    class="action-input"
+                    value="<?= patient.workflow.nextFollowUpWindowStartInput ?>"
+                    aria-label="Callback start time"
+                  >
+
+                  <input
+                    type="time"
+                    id="follow-up-end-input"
+                    class="action-input"
+                    value="<?= patient.workflow.nextFollowUpWindowEndInput ?>"
+                    aria-label="Callback end time"
+                  >
+                </div>
+
+                <textarea
+                  id="follow-up-note-input"
+                  class="action-textarea"
+                  placeholder="Optional follow-up note"
+                ></textarea>
+
+                <div class="action-help">
+                  Date is required. Start and end times are optional.
+                  Available for Open Lead and Follow Up. Saving a follow-up moves an Open Lead to Follow Up. Clearing it returns a Follow Up lead to Open Lead.
+                </div>
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="save-follow-up-button"
+                    class="action-button"
+                    onclick="savePatientFollowUp()"
+                  >
+                    Set / Update Follow-Up
+                  </button>
+
+                  <button
+                    type="button"
+                    id="clear-follow-up-button"
+                    class="secondary-action-button"
+                    onclick="clearPatientFollowUp()"
+                  >
+                    Clear Follow-Up
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="patient-action-row-secondary">
+
+            <div class="contact-action">
+
+              <div class="contact-action-header">
+                Record Contact Attempt
+              </div>
+
+              <div class="contact-action-grid">
+
+                <div
+                  id="contact-method-picker"
+                  class="choice-picker"
+                >
+                  <? patient.options.contactMethods.forEach(
+                    function(method) {
+                  ?>
+
+                    <label class="choice-chip">
+                      <input
+                        type="checkbox"
+                        value="<?= method ?>"
+                      >
+                      <span><?= method ?></span>
+                    </label>
+
+                  <? }); ?>
+                </div>
+
+
+                <textarea
+                  id="contact-attempt-note"
+                  class="contact-note"
+                  placeholder="Optional note about this contact attempt"
+                ></textarea>
+
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="record-attempt-button"
+                    class="action-button"
+                    onclick="recordContactAttempt()"
+                  >
+                    Record Attempt
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="workflow-action-card">
+
+              <div class="workflow-action-header">
+                Workflow Movement
+              </div>
+
+              <div class="workflow-action-grid">
+
+                <select
+                  id="workflow-target-select"
+                  class="action-select"
+                  onchange="updateWorkflowMovementFields()"
+                >
+                  <option value="">
+                    Select Workflow Destination
+                  </option>
+
+                  <option
+                    value="Open Lead"
+                  >
+                    Open Lead
+                  </option>
+
+                  <option
+                    value="Follow Up"
+                  >
+                    Follow Up
+                  </option>
+
+                  <option
+                    value="Case Lost"
+                  >
+                    Case Lost
+                  </option>
+
+                  <option
+                    value="Unrelated"
+                  >
+                    Unrelated
+                  </option>
+                </select>
+
+
+                <div
+                  id="case-lost-reason-group"
+                  hidden
+                >
+                  <div
+                    id="case-lost-reason-picker"
+                    class="choice-picker"
+                  >
+                    <? patient.options.caseLostReasons.forEach(
+                      function(reason) {
+                    ?>
+
+                      <label class="choice-chip">
+                        <input
+                          type="checkbox"
+                          value="<?= reason ?>"
+                          <? if (
+                            patient.workflow.lostReasons &&
+                            patient.workflow.lostReasons.indexOf(reason) !== -1
+                          ) { ?>
+                            checked
+                          <? } ?>
+                          onchange="updateCaseLostNoteGuidance()"
+                        >
+                        <span><?= reason ?></span>
+                      </label>
+
+                    <? }); ?>
+                  </div>
+                </div>
+
+
+                <div
+                  id="unrelated-type-group"
+                  hidden
+                >
+                  <select
+                    id="unrelated-type-select"
+                    class="action-select"
+                  >
+                    <option value="">
+                      Unrelated Type
+                    </option>
+
+                    <? patient.options.unrelatedTypes.forEach(
+                      function(type) {
+                    ?>
+
+                      <option value="<?= type ?>">
+                        <?= type ?>
+                      </option>
+
+                    <? }); ?>
+                  </select>
+                </div>
+
+
+                <textarea
+                  id="workflow-move-note"
+                  class="action-textarea"
+                  placeholder="Optional workflow note"
+                ></textarea>
+
+
+                <div
+                  id="workflow-move-help"
+                  class="action-help"
+                >
+                  Use the Scheduling card above to move a lead into Scheduled.
+                </div>
+
+
+                <div class="action-buttons">
+
+                  <button
+                    type="button"
+                    id="move-workflow-button"
+                    class="action-button"
+                    onclick="saveWorkflowMovement()"
+                  >
+                    Move Lead
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
 
 
       <div class="footer">
@@ -2538,106 +2384,50 @@
       }
 
 
-      function setAssignmentBusy(
-        busy
-      ) {
-        const button =
-          document.getElementById(
-            "save-assignment-button"
-          );
+      function selectedChoiceValues(containerId) {
+        const root = document.getElementById(containerId);
 
-        const select =
-          document.getElementById(
-            "assignment-select"
-          );
+        if (!root) {
+          return [];
+        }
 
-        button.disabled =
-          Boolean(busy);
-
-        select.disabled =
-          Boolean(busy);
-
-        button.textContent =
-          busy
-            ? "Saving..."
-            : "Save Assignment";
-      }
-
-
-      function saveAssignment() {
-        const leadId =
-          getPatientLeadId();
-
-        const assignedTo =
-          document
-            .getElementById(
-              "assignment-select"
-            )
-            .value
-            .trim();
-
-        setPatientActionMessage(
-          "Saving assignment...",
-          false
-        );
-
-        setAssignmentBusy(
-          true
-        );
-
-        google.script.run
-          .withSuccessHandler(
-            handleAssignmentSuccess
-          )
-          .withFailureHandler(
-            handlePatientActionFailure
-          )
-          .patientDetailAssignLead(
-            leadId,
-            {
-              assignedTo:
-                assignedTo,
-            }
-          );
-      }
-
-
-      function handleAssignmentSuccess(
-        result
-      ) {
-        setAssignmentBusy(
-          false
-        );
-
-        setPatientActionMessage(
-          result.message ||
-          "Assignment saved.",
-          false
-        );
-
-        afterPatientMutationSuccess(
-          result
+        return Array.prototype.map.call(
+          root.querySelectorAll('input[type="checkbox"]:checked'),
+          function(input) {
+            return input.value;
+          }
         );
       }
 
 
-      function handlePatientActionFailure(
-        error
-      ) {
-        setAssignmentBusy(
-          false
+      function setChoicePickerDisabled(containerId, disabled) {
+        const root = document.getElementById(containerId);
+
+        if (!root) {
+          return;
+        }
+
+        Array.prototype.forEach.call(
+          root.querySelectorAll("input"),
+          function(input) {
+            input.disabled = Boolean(disabled);
+          }
         );
+      }
 
-        const message =
-          error &&
-          error.message
-            ? error.message
-            : String(error);
 
-        setPatientActionMessage(
-          message ||
-          "The action could not be completed.",
-          true
+      function clearChoicePicker(containerId) {
+        const root = document.getElementById(containerId);
+
+        if (!root) {
+          return;
+        }
+
+        Array.prototype.forEach.call(
+          root.querySelectorAll('input[type="checkbox"]'),
+          function(input) {
+            input.checked = false;
+          }
         );
       }
 
@@ -2650,21 +2440,6 @@
             "record-attempt-button"
           );
 
-        const method =
-          document.getElementById(
-            "contact-method-select"
-          );
-
-        const outcome =
-          document.getElementById(
-            "contact-outcome-select"
-          );
-
-        const reached =
-          document.getElementById(
-            "reached-patient-checkbox"
-          );
-
         const note =
           document.getElementById(
             "contact-attempt-note"
@@ -2673,14 +2448,10 @@
         button.disabled =
           Boolean(busy);
 
-        method.disabled =
-          Boolean(busy);
-
-        outcome.disabled =
-          Boolean(busy);
-
-        reached.disabled =
-          Boolean(busy);
+        setChoicePickerDisabled(
+          "contact-method-picker",
+          busy
+        );
 
         note.disabled =
           Boolean(busy);
@@ -2696,28 +2467,10 @@
         const leadId =
           getPatientLeadId();
 
-        const contactMethod =
-          document
-            .getElementById(
-              "contact-method-select"
-            )
-            .value
-            .trim();
-
-        const contactOutcome =
-          document
-            .getElementById(
-              "contact-outcome-select"
-            )
-            .value
-            .trim();
-
-        const reachedPatient =
-          document
-            .getElementById(
-              "reached-patient-checkbox"
-            )
-            .checked;
+        const contactMethods =
+          selectedChoiceValues(
+            "contact-method-picker"
+          );
 
         const note =
           document
@@ -2728,19 +2481,9 @@
             .trim();
 
 
-        if (!contactMethod) {
+        if (!contactMethods.length) {
           setPatientActionMessage(
-            "Select a contact method.",
-            true
-          );
-
-          return;
-        }
-
-
-        if (!contactOutcome) {
-          setPatientActionMessage(
-            "Select a contact outcome.",
+            "Select at least one contact method.",
             true
           );
 
@@ -2768,14 +2511,8 @@
           .patientDetailRecordContactAttempt(
             leadId,
             {
-              contactMethod:
-                contactMethod,
-
-              contactOutcome:
-                contactOutcome,
-
-              reachedPatient:
-                reachedPatient,
+              contactMethods:
+                contactMethods,
 
               note:
                 note,
@@ -2803,23 +2540,9 @@
          * submission so an employee does not
          * accidentally submit the same attempt twice.
          */
-        document
-          .getElementById(
-            "contact-method-select"
-          )
-          .value = "";
-
-        document
-          .getElementById(
-            "contact-outcome-select"
-          )
-          .value = "";
-
-        document
-          .getElementById(
-            "reached-patient-checkbox"
-          )
-          .checked = false;
+        clearChoicePicker(
+          "contact-method-picker"
+        );
 
         document
           .getElementById(
@@ -2993,6 +2716,16 @@
             "follow-up-date-input"
           );
 
+        const startInput =
+          document.getElementById(
+            "follow-up-start-input"
+          );
+
+        const endInput =
+          document.getElementById(
+            "follow-up-end-input"
+          );
+
         const noteInput =
           document.getElementById(
             "follow-up-note-input"
@@ -3006,6 +2739,14 @@
 
         dateInput.disabled =
           Boolean(busy);
+
+        if (startInput) {
+          startInput.disabled = Boolean(busy);
+        }
+
+        if (endInput) {
+          endInput.disabled = Boolean(busy);
+        }
 
         noteInput.disabled =
           Boolean(busy);
@@ -3041,6 +2782,22 @@
             .value
             .trim();
 
+        const windowStartText =
+          document
+            .getElementById(
+              "follow-up-start-input"
+            )
+            .value
+            .trim();
+
+        const windowEndText =
+          document
+            .getElementById(
+              "follow-up-end-input"
+            )
+            .value
+            .trim();
+
         setPatientActionMessage(
           "Saving follow-up date...",
           false
@@ -3061,6 +2818,8 @@
             leadId,
             {
               followUpDateText,
+              windowStartText,
+              windowEndText,
               note,
             }
           );
@@ -3150,6 +2909,29 @@
       }
 
 
+      function currentPatientWorkflowStatus() {
+        const element =
+          document.getElementById(
+            "status-value"
+          );
+
+        return element
+          ? element.textContent.trim()
+          : "";
+      }
+
+
+      function closedPatientWorkflowStatus(
+        status
+      ) {
+        return (
+          status === "Scheduled" ||
+          status === "Case Lost" ||
+          status === "Unrelated"
+        );
+      }
+
+
       function updateWorkflowMovementFields() {
         const target =
           document
@@ -3189,23 +2971,44 @@
 
 
         if (
-          target ===
-          "Open Lead / Follow Up"
+          target === "Open Lead" ||
+          target === "Follow Up"
         ) {
-          note.placeholder =
-            "Reason for reopening / returning this lead to active follow-up";
+          const currentStatus =
+            currentPatientWorkflowStatus();
 
-          help.textContent =
-            "A reason is required when moving a lead back to Open Lead / Follow Up.";
+          if (currentStatus === target) {
+            note.placeholder =
+              "Optional workflow note";
+
+            help.textContent =
+              "This lead is already in " + target + ".";
+          } else if (
+            closedPatientWorkflowStatus(currentStatus)
+          ) {
+            note.placeholder =
+              "Reason for returning this lead to " + target;
+
+            help.textContent =
+              "A reason is required when moving a lead back to " + target + ".";
+          } else if (target === "Follow Up") {
+            note.placeholder =
+              "Optional note";
+
+            help.textContent =
+              "A callback date is optional for Follow Up.";
+          } else {
+            note.placeholder =
+              "Optional note";
+
+            help.textContent =
+              "Moving to Open Lead keeps the patient history.";
+          }
         } else if (
           target ===
           "Case Lost"
         ) {
-          note.placeholder =
-            "Optional note explaining the Case Lost classification";
-
-          help.textContent =
-            "Choose a Case Lost reason. The workflow remains incomplete until explicitly completed.";
+          updateCaseLostNoteGuidance();
         } else if (
           target ===
           "Unrelated"
@@ -3214,7 +3017,7 @@
             "Optional note explaining why this inquiry is unrelated";
 
           help.textContent =
-            "Choose an Unrelated type. The workflow remains incomplete until explicitly completed.";
+            "Choose an Unrelated type. A note is optional.";
         } else {
           note.placeholder =
             "Optional workflow note";
@@ -3225,29 +3028,61 @@
       }
 
 
+      function updateCaseLostNoteGuidance() {
+        const note =
+          document.getElementById(
+            "workflow-move-note"
+          );
+
+        const help =
+          document.getElementById(
+            "workflow-move-help"
+          );
+
+        const selected =
+          selectedChoiceValues(
+            "case-lost-reason-picker"
+          );
+
+        const insuranceSelected =
+          selected.indexOf("Insurance") >= 0;
+
+        const guidance =
+          insuranceSelected
+            ? "List the patient's insurance if it is not accepted."
+            : "Explain case lost; list patient's insurance if unaccepted.";
+
+        if (note) {
+          note.placeholder = guidance;
+        }
+
+        if (help) {
+          help.textContent = insuranceSelected
+            ? guidance
+            : "Choose one or more Case Lost reasons. The note is optional.";
+        }
+      }
+
+
       function setWorkflowMovementBusy(
         busy
       ) {
-        const ids = [
+        [
           "workflow-target-select",
-          "case-lost-reason-select",
           "unrelated-type-select",
           "workflow-move-note",
           "move-workflow-button",
-        ];
+        ].forEach(function(id) {
+          const element = document.getElementById(id);
 
-        ids.forEach(
-          function(id) {
-            const element =
-              document.getElementById(
-                id
-              );
-
-            if (element) {
-              element.disabled =
-                Boolean(busy);
-            }
+          if (element) {
+            element.disabled = Boolean(busy);
           }
+        });
+
+        setChoicePickerDisabled(
+          "case-lost-reason-picker",
+          busy
         );
 
         const button =
@@ -3276,13 +3111,10 @@
             .value
             .trim();
 
-        const reason =
-          document
-            .getElementById(
-              "case-lost-reason-select"
-            )
-            .value
-            .trim();
+        const reasons =
+          selectedChoiceValues(
+            "case-lost-reason-picker"
+          );
 
         const unrelatedType =
           document
@@ -3314,7 +3146,7 @@
         if (
           targetStatus ===
             "Case Lost" &&
-          !reason
+          !reasons.length
         ) {
           setPatientActionMessage(
             "Select a Case Lost reason.",
@@ -3340,12 +3172,17 @@
 
 
         if (
-          targetStatus ===
-            "Open Lead / Follow Up" &&
+          (
+            targetStatus === "Open Lead" ||
+            targetStatus === "Follow Up"
+          ) &&
+          closedPatientWorkflowStatus(
+            currentPatientWorkflowStatus()
+          ) &&
           !note
         ) {
           setPatientActionMessage(
-            "Enter a reason for moving this lead back to Open Lead / Follow Up.",
+            "Enter a reason for moving this lead back to " + targetStatus + ".",
             true
           );
 
@@ -3374,7 +3211,7 @@
             leadId,
             {
               targetStatus,
-              reason,
+              reasons,
               unrelatedType,
               note,
             }
@@ -3402,11 +3239,9 @@
           )
           .value = "";
 
-        document
-          .getElementById(
-            "case-lost-reason-select"
-          )
-          .value = "";
+        clearChoicePicker(
+          "case-lost-reason-picker"
+        );
 
         document
           .getElementById(
@@ -3599,7 +3434,7 @@
 
         if (help) {
           help.textContent =
-            'Open Lead / Follow Up cannot be marked complete. Move it to Scheduled, Case Lost, or Unrelated first.';
+            'Open Lead and Follow Up cannot be marked complete. Move the lead to Scheduled, Case Lost, or Unrelated first.';
         }
 
         applyArchiveInteractionState();
@@ -5601,7 +5436,7 @@
         if (assignedElement) {
           assignedElement.textContent =
             refresh.assignedTo ||
-            "Unassigned";
+            "—";
         }
 
         const assignmentSelect =
@@ -5706,6 +5541,28 @@
         if (followUpInput) {
           followUpInput.value =
             refresh.nextFollowUpInput ||
+            "";
+        }
+
+        const followUpStartInput =
+          document.getElementById(
+            "follow-up-start-input"
+          );
+
+        if (followUpStartInput) {
+          followUpStartInput.value =
+            refresh.nextFollowUpWindowStartInput ||
+            "";
+        }
+
+        const followUpEndInput =
+          document.getElementById(
+            "follow-up-end-input"
+          );
+
+        if (followUpEndInput) {
+          followUpEndInput.value =
+            refresh.nextFollowUpWindowEndInput ||
             "";
         }
 
@@ -6288,12 +6145,8 @@
           return "Open leads stay on the Board until they move to Scheduled, Case Lost, or Unrelated.";
         }
 
-        if (code === "SCHEDULED_NOT_COMPLETE") {
-          return "Scheduled leads can be archived after the workflow is marked complete.";
-        }
-
         if (state && state.archived) {
-          return "This lead is archived. Unarchive it before changing workflow, contact, or completion. Reopen Workflow stays separate.";
+          return "This lead is archived. Workflow changes stay locked until it is unarchived from the Archive tab.";
         }
 
         return "Archive removes the lead from the Board. It does not delete the record.";
@@ -6356,14 +6209,13 @@
           "schedule-note-input",
           "save-schedule-button",
           "follow-up-date-input",
+          "follow-up-start-input",
+          "follow-up-end-input",
           "follow-up-note-input",
           "save-follow-up-button",
           "clear-follow-up-button",
-          "contact-method-select",
-          "contact-outcome-select",
           "record-attempt-button",
           "workflow-target-select",
-          "case-lost-reason-select",
           "unrelated-type-select",
           "workflow-move-note",
           "move-workflow-button",
@@ -6382,6 +6234,9 @@
             control.disabled = true;
           }
         });
+
+        setChoicePickerDisabled("contact-method-picker", true);
+        setChoicePickerDisabled("case-lost-reason-picker", true);
       }
 
       function archivePatientFromDetail() {

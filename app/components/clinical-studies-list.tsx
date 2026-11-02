@@ -39,6 +39,7 @@ export function ClinicalStudiesList({
     () => studies.filter((study) => matchesClinicalStudyFilter(study, activeFilter)),
     [studies, activeFilter],
   );
+  const twoUp = studies.length > 1;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
@@ -107,7 +108,7 @@ export function ClinicalStudiesList({
         </div>
       </div>
 
-      <div className="mt-10 grid gap-8 md:grid-cols-2">
+      <div className={`mt-10 grid gap-8 ${twoUp ? "md:grid-cols-2" : ""}`}>
         {filteredStudies.map((study) => (
           <article
             key={study.name}
@@ -118,7 +119,7 @@ export function ClinicalStudiesList({
                 src={study.image}
                 alt={study.imageAlt}
                 fill
-                sizes="(min-width: 768px) 45vw, 100vw"
+                sizes={twoUp ? "(min-width: 768px) 45vw, 100vw" : "100vw"}
                 className="object-cover transition duration-500 group-hover:scale-[1.02]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent" />
@@ -128,6 +129,11 @@ export function ClinicalStudiesList({
               <h3 className="text-2xl font-bold tracking-tight text-slate-900">
                 {study.name}
               </h3>
+              {study.headline ? (
+                <p className="mt-2 text-base font-semibold leading-relaxed text-slate-800">
+                  {study.headline}
+                </p>
+              ) : null}
               {study.fullName ? (
                 <p className="mt-2 text-sm leading-relaxed text-slate-500">
                   {study.fullName}
@@ -138,9 +144,19 @@ export function ClinicalStudiesList({
               >
                 Status: {study.status}
               </p>
-              <p className="mt-4 text-base leading-relaxed text-slate-700">
-                {study.description}
-              </p>
+              <div className="mt-4 space-y-4 text-base leading-relaxed text-slate-700">
+                <p>{study.description}</p>
+                {study.paragraphs?.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                {study.sections?.map((section) => (
+                  <p key={section.title}>
+                    <span className="font-semibold text-slate-900">{section.title}: </span>
+                    {section.body}
+                  </p>
+                ))}
+                {study.closing ? <p>{study.closing}</p> : null}
+              </div>
               {study.nct ? (
                 <p className="mt-6 border-t border-slate-100 pt-5">
                   <a

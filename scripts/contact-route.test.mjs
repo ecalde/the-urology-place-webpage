@@ -1,6 +1,6 @@
 /**
- * Phase 7F route contracts for POST /api/contact.
- * Fake data only. Does not call Trello, Resend, Google, or Apps Script.
+ * Route contracts for POST /api/contact.
+ * Fake data only. Does not call Resend, Google, or Apps Script.
  */
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -19,8 +19,9 @@ const GENERIC_VALIDATION_ERROR =
   "Invalid or incomplete submission. Please check your information and try again.";
 const RATE_LIMIT_MESSAGE =
   "Too many submissions from this connection. Please wait and try again later.";
-const TRELLO_FAILURE_MESSAGE =
+const SUBMISSION_FAILURE_MESSAGE =
   "The request could not be completed. Please try again later.";
+const LEAD_ID = "LEAD-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 const CRM_DTO_KEYS = [
   "appointment_reason",
@@ -64,8 +65,8 @@ const ENV_KEYS = [
   "RESEND_API_KEY",
   "CONTACT_NOTIFICATION_FROM",
   "CONTACT_NOTIFICATION_TO",
-  "TRELLO_BOARD_EMAIL",
   "RECAPTCHA_SECRET_KEY",
+  "VERCEL_ENV",
   "NEXT_PUBLIC_RECAPTCHA_SITE_KEY",
   "RECAPTCHA_SCORE_THRESHOLD",
 ];
@@ -95,10 +96,11 @@ function loadRouteModules() {
     `,
     "contact-email-stub.mjs": `
       export async function sendContactNotificationEmail() {
-        throw new Error("contact-email stub invoked");
-      }
-      export async function sendTrelloBoardEmail() {
-        throw new Error("contact-email stub invoked");
+        globalThis.__contactNotifyCalls = (globalThis.__contactNotifyCalls ?? 0) + 1;
+        if (globalThis.__contactNotifyMode === "ok") return;
+        const error = new Error("contact-email stub invoked");
+        error.statusCode = 422;
+        throw error;
       }
     `,
     "contact-form-defaults.mjs": transpile(
@@ -217,38 +219,36 @@ function contactRequest(body, ip) {
 }
 
 function harness(hooks = {}) {
-  const calls = { trello: 0, notify: 0, crm: 0 };
+  const calls = { notify: 0, crm: 0 };
   const crmArgs = [];
-  let trelloFinished = false;
+  const events = [];
   const overrides = {
     checkContactRateLimit() {
       if (hooks.rateLimit) return hooks.rateLimit();
       return true;
     },
-    async sendTrelloBoardEmail() {
-      calls.trello += 1;
-      if (hooks.trello) await hooks.trello();
-      trelloFinished = true;
-    },
     async sendContactNotificationEmail() {
-      if (!trelloFinished) {
-        throw new Error("staff notification started before Trello finished");
-      }
+      events.push("notify");
       calls.notify += 1;
+      if (!events.includes("crm-success")) {
+        throw new Error("staff notification started before CRM success");
+      }
       if (hooks.notify) await hooks.notify();
     },
     async ingestContactToCrm(contact, ...rest) {
-      if (!trelloFinished) {
-        throw new Error("CRM started before Trello finished");
-      }
+      events.push("crm");
       calls.crm += 1;
       crmArgs.push({ contact, extraArgs: rest.length });
-      if (hooks.realCrm) return hooks.realCrm(contact);
-      if (hooks.crm) return hooks.crm(contact);
-      return SUCCESS_CRM;
+      const result = hooks.realCrm
+        ? await hooks.realCrm(contact)
+        : hooks.crm
+          ? await hooks.crm(contact)
+          : SUCCESS_CRM;
+      if (result?.outcome === "success") events.push("crm-success");
+      return result;
     },
   };
-  return { calls, crmArgs, overrides };
+  return { calls, crmArgs, events, overrides };
 }
 
 async function post(handle, body, ip) {
@@ -278,14 +278,6 @@ async function silence(fn) {
   } finally {
     console.error = original;
   }
-}
-
-function withTimeout(promise, ms, label) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(label)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function assertDto(contact, expected) {
@@ -326,72 +318,56 @@ afterEach(() => {
 });
 
 describe("POST /api/contact contracts", { concurrency: false }, () => {
-  test("happy path runs Trello, then overlaps staff email and CRM", async () => {
-    let started = 0;
-    let release = () => {};
-    const gate = new Promise((resolve) => {
-      release = resolve;
-    });
-    function arrived() {
-      started += 1;
-      if (started === 2) release();
-      return gate;
-    }
-
+  test("successful submission calls CRM before staff email and returns success", async () => {
+    let notifyStarted = false;
     const handle = harness({
-      notify: () => arrived(),
-      crm: () => arrived().then(() => SUCCESS_CRM),
+      crm: async () => {
+        assert.equal(notifyStarted, false);
+        return SUCCESS_CRM;
+      },
+      notify: async () => {
+        notifyStarted = true;
+      },
     });
-
-    try {
-      const { result, logs } = await silence(() =>
-        withTimeout(
-          post(handle, manualPayload()),
-          1000,
-          "staff email and CRM did not overlap after Trello",
-        ),
-      );
-      assert.equal(started, 2);
-      assert.equal(result.status, 200);
-      assert.deepEqual(result.json, { ok: true });
-      assert.equal(handle.calls.trello, 1);
-      assert.equal(handle.calls.notify, 1);
-      assert.equal(handle.calls.crm, 1);
-      assert.equal(handle.crmArgs[0].extraArgs, 0);
-      assert.equal(logs.length, 0);
-    } finally {
-      release();
-    }
+    const { result, logs } = await silence(() => post(handle, manualPayload()));
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.json, { ok: true });
+    assert.equal(handle.calls.crm, 1);
+    assert.equal(handle.calls.notify, 1);
+    assert.deepEqual(handle.events, ["crm", "crm-success", "notify"]);
+    assert.equal(handle.crmArgs[0].extraArgs, 0);
+    assert.equal(logs.length, 0);
+    assert.equal(JSON.stringify(result.json).includes("LEAD-"), false);
   });
 
-  test("Trello failure returns 502 and does not call CRM or staff email", async () => {
+  test("a thrown CRM client returns 502 and does not notify staff", async () => {
     const handle = harness({
-      trello: async () => {
-        throw new Error("trello unavailable");
+      crm: async () => {
+        throw new Error("crm client exploded");
       },
     });
     const { result, logs } = await silence(() => post(handle, manualPayload()));
     assert.equal(result.status, 502);
     assert.deepEqual(result.json, {
       ok: false,
-      error: TRELLO_FAILURE_MESSAGE,
+      error: SUBMISSION_FAILURE_MESSAGE,
     });
-    assert.equal(handle.calls.trello, 1);
+    assert.equal(handle.calls.crm, 1);
     assert.equal(handle.calls.notify, 0);
-    assert.equal(handle.calls.crm, 0);
     assert.equal(logs.length, 1);
     assert.equal(logs[0][0], "[contact]");
-    assert.equal(logs[0][1].event, "trello_board_email_failed");
+    assert.equal(logs[0][1].event, "crm_ingest_failed");
     assert.equal(logs[0][1].error_class, "Error");
-    assert.equal(JSON.stringify(logs).includes("trello unavailable"), false);
+    assert.equal(JSON.stringify(logs).includes("crm client exploded"), false);
     assert.equal(JSON.stringify(logs).includes("DEVTEST"), false);
     assert.equal(
       JSON.stringify(logs).includes("devtest.patient@example.com"),
       false,
     );
+    assert.equal(JSON.stringify(result.json).includes("AUTH_FAILED"), false);
   });
 
-  test("CRM AUTH_FAILED still returns the Trello success response", async () => {
+  test("CRM AUTH_FAILED returns browser failure and does not notify staff", async () => {
     const handle = harness({
       crm: async () => ({
         outcome: "failed",
@@ -401,15 +377,19 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
       }),
     });
     const { result, logs } = await silence(() => post(handle, manualPayload()));
-    assert.equal(result.status, 200);
-    assert.deepEqual(result.json, { ok: true });
-    assert.equal(handle.calls.trello, 1);
-    assert.equal(handle.calls.notify, 1);
+    assert.equal(result.status, 502);
+    assert.deepEqual(result.json, {
+      ok: false,
+      error: SUBMISSION_FAILURE_MESSAGE,
+    });
+    assert.equal(handle.calls.notify, 0);
     assert.equal(handle.calls.crm, 1);
     assert.equal(logs.length, 0);
+    assert.equal(JSON.stringify(result.json).includes("AUTH_FAILED"), false);
+    assert.equal(JSON.stringify(result.json).includes("DEVTEST"), false);
   });
 
-  test("CRM NETWORK failure still returns the Trello success response", async () => {
+  test("CRM NETWORK failure returns browser failure and does not notify staff", async () => {
     const handle = harness({
       crm: async () => ({
         outcome: "failed",
@@ -419,14 +399,17 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
       }),
     });
     const result = await post(handle, manualPayload());
-    assert.equal(result.status, 200);
-    assert.deepEqual(result.json, { ok: true });
-    assert.equal(handle.calls.trello, 1);
+    assert.equal(result.status, 502);
+    assert.deepEqual(result.json, {
+      ok: false,
+      error: SUBMISSION_FAILURE_MESSAGE,
+    });
     assert.equal(handle.calls.crm, 1);
-    assert.equal(handle.calls.notify, 1);
+    assert.equal(handle.calls.notify, 0);
+    assert.equal(JSON.stringify(result.json).includes("NETWORK"), false);
   });
 
-  test("CRM timeout is contained and the route does not retry it", async () => {
+  test("CRM timeout returns browser failure and the route does not retry it", async () => {
     const handle = harness({
       crm: async () => ({
         outcome: "failed",
@@ -438,14 +421,17 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     const started = Date.now();
     const result = await post(handle, manualPayload());
     assert.ok(Date.now() - started < 1000);
-    assert.equal(result.status, 200);
-    assert.deepEqual(result.json, { ok: true });
-    assert.equal(handle.calls.trello, 1);
+    assert.equal(result.status, 502);
+    assert.deepEqual(result.json, {
+      ok: false,
+      error: SUBMISSION_FAILURE_MESSAGE,
+    });
     assert.equal(handle.calls.crm, 1);
-    assert.equal(handle.calls.notify, 1);
+    assert.equal(handle.calls.notify, 0);
+    assert.equal(JSON.stringify(result.json).includes("TIMEOUT"), false);
   });
 
-  test("staff email failure stays best-effort while CRM still runs", async () => {
+  test("staff email failure after CRM success still returns browser success", async () => {
     const handle = harness({
       notify: async () => {
         throw new Error("resend unavailable");
@@ -455,9 +441,9 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     const { result, logs } = await silence(() => post(handle, manualPayload()));
     assert.equal(result.status, 200);
     assert.deepEqual(result.json, { ok: true });
-    assert.equal(handle.calls.trello, 1);
     assert.equal(handle.calls.notify, 1);
     assert.equal(handle.calls.crm, 1);
+    assert.deepEqual(handle.events, ["crm", "crm-success", "notify"]);
     assert.equal(logs.length, 1);
     assert.equal(logs[0][0], "[contact]");
     assert.equal(logs[0][1].event, "staff_notification_email_failed");
@@ -469,6 +455,7 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
   test("CRM stays disabled unless CRM_INGEST_ENABLED is exactly true", async () => {
     process.env.CRM_INGEST_URL = DEV_URL;
     process.env.CRM_INGEST_SECRET = "test-secret";
+    process.env.VERCEL_ENV = "production";
     const originalFetch = globalThis.fetch;
     let fetches = 0;
     globalThis.fetch = async () => {
@@ -477,7 +464,7 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     };
 
     try {
-      for (const value of [undefined, "", "false", "FALSE", "1", "yes"]) {
+      for (const value of [undefined, "", "false", "FALSE", "1", "yes", "True"]) {
         if (value === undefined) delete process.env.CRM_INGEST_ENABLED;
         else process.env.CRM_INGEST_ENABLED = value;
         const seen = [];
@@ -488,13 +475,25 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
             return result;
           },
         });
-        const response = await post(handle, manualPayload());
-        assert.equal(response.status, 200, String(value));
-        assert.deepEqual(response.json, { ok: true });
-        assert.equal(handle.calls.trello, 1, String(value));
-        assert.equal(handle.calls.notify, 1, String(value));
+        const { result, logs } = await silence(() =>
+          post(handle, manualPayload()),
+        );
+        assert.equal(result.status, 502, String(value));
+        assert.deepEqual(result.json, {
+          ok: false,
+          error: SUBMISSION_FAILURE_MESSAGE,
+        });
+        assert.equal(handle.calls.notify, 0, String(value));
         assert.equal(handle.calls.crm, 1, String(value));
         assert.equal(seen[0].outcome, "skipped", String(value));
+        assert.equal(logs.length, 1, String(value));
+        assert.deepEqual(logs[0][1], {
+          event: "crm_ingest_not_confirmed",
+          outcome: "skipped",
+        });
+        assert.equal(JSON.stringify(logs).includes("test-secret"), false);
+        assert.equal(JSON.stringify(logs).includes(DEV_URL), false);
+        assert.equal(JSON.stringify(result.json).includes("skipped"), false);
       }
       assert.equal(fetches, 0);
     } finally {
@@ -502,15 +501,86 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     }
   });
 
-  test("POST itself does not reach CRM when the Trello send throws", async () => {
+  test("POST signs one CRM request and still succeeds if staff email fails", async () => {
+    process.env.CRM_INGEST_ENABLED = "true";
+    process.env.CRM_INGEST_URL = DEV_URL;
+    process.env.CRM_INGEST_SECRET = "test-secret";
+    process.env.VERCEL_ENV = "production";
+    const originalFetch = globalThis.fetch;
+    const fetches = [];
+    globalThis.__contactNotifyCalls = 0;
+    delete globalThis.__contactNotifyMode;
+    globalThis.fetch = async (url, init) => {
+      fetches.push({ url, init });
+      const submissionId = JSON.parse(init.body).submission_id;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          version: 1,
+          lead_id: LEAD_ID,
+          submission_id: submissionId,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    try {
+      const { result, logs } = await silence(async () => {
+        const response = await route.POST(contactRequest(manualPayload()));
+        return { status: response.status, json: await response.json() };
+      });
+      assert.equal(result.status, 200);
+      assert.deepEqual(result.json, { ok: true });
+      assert.equal(fetches.length, 1);
+      assert.equal(fetches[0].url, DEV_URL);
+      assert.equal(fetches[0].init.method, "POST");
+      assert.equal(globalThis.__contactNotifyCalls, 1);
+      const envelope = JSON.parse(fetches[0].init.body);
+      assert.equal(envelope.version, 1);
+      assert.match(
+        envelope.submission_id,
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      const signing = crm.buildWebsiteIngestSigningString(
+        envelope.version,
+        envelope.timestamp,
+        envelope.submission_id,
+        envelope.payload,
+      );
+      assert.equal(
+        envelope.signature,
+        crm.hmacSha256Hex(signing, "test-secret"),
+      );
+      assert.equal(envelope.payload.first_name, "DEVTEST");
+      assert.equal(envelope.payload.sms_consent, false);
+      assert.equal(JSON.stringify(logs).includes("test-secret"), false);
+      assert.equal(JSON.stringify(logs).includes(DEV_URL), false);
+      assert.equal(JSON.stringify(logs).includes("DEVTEST"), false);
+      assert.equal(logs.some((entry) => entry[1]?.event === "staff_notification_email_failed"), true);
+      assert.equal(JSON.stringify(result.json).includes(LEAD_ID), false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete globalThis.__contactNotifyCalls;
+      delete globalThis.__contactNotifyMode;
+    }
+  });
+
+  test("POST does not notify staff when CRM rejects the write", async () => {
     process.env.CRM_INGEST_ENABLED = "true";
     process.env.CRM_INGEST_URL = DEV_URL;
     process.env.CRM_INGEST_SECRET = "test-secret";
     const originalFetch = globalThis.fetch;
     let fetches = 0;
+    globalThis.__contactNotifyCalls = 0;
     globalThis.fetch = async () => {
       fetches += 1;
-      throw new Error("CRM network should not be called");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: "INGEST_FAILED",
+          lead_id: LEAD_ID,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
     };
     try {
       const { result, logs } = await silence(async () => {
@@ -520,14 +590,58 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
       assert.equal(result.status, 502);
       assert.deepEqual(result.json, {
         ok: false,
-        error: TRELLO_FAILURE_MESSAGE,
+        error: SUBMISSION_FAILURE_MESSAGE,
       });
-      assert.equal(fetches, 0);
-      assert.equal(logs[0][0], "[contact]");
-      assert.equal(logs[0][1].event, "trello_board_email_failed");
+      assert.equal(fetches, 1);
+      assert.equal(globalThis.__contactNotifyCalls, 0);
+      assert.equal(JSON.stringify(result.json).includes("INGEST_FAILED"), false);
+      assert.equal(JSON.stringify(result.json).includes(LEAD_ID), false);
       assert.equal(JSON.stringify(logs).includes("DEVTEST"), false);
+      assert.equal(JSON.stringify(logs).includes("test-secret"), false);
+      assert.equal(JSON.stringify(logs).includes(DEV_URL), false);
     } finally {
       globalThis.fetch = originalFetch;
+      delete globalThis.__contactNotifyCalls;
+    }
+  });
+
+  test("two POST submissions use distinct submission ids and do not retry", async () => {
+    process.env.CRM_INGEST_ENABLED = "true";
+    process.env.CRM_INGEST_URL = DEV_URL;
+    process.env.CRM_INGEST_SECRET = "test-secret";
+    const originalFetch = globalThis.fetch;
+    const ids = [];
+    globalThis.__contactNotifyMode = "ok";
+    globalThis.__contactNotifyCalls = 0;
+    globalThis.fetch = async (_url, init) => {
+      const submissionId = JSON.parse(init.body).submission_id;
+      ids.push(submissionId);
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          version: 1,
+          lead_id: LEAD_ID,
+          submission_id: submissionId,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    try {
+      const first = await route.POST(contactRequest(manualPayload()));
+      const second = await route.POST(
+        contactRequest(
+          manualPayload({ message: "Second independent DEVTEST submission." }),
+        ),
+      );
+      assert.equal(first.status, 200);
+      assert.equal(second.status, 200);
+      assert.equal(ids.length, 2);
+      assert.notEqual(ids[0], ids[1]);
+      assert.equal(globalThis.__contactNotifyCalls, 2);
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete globalThis.__contactNotifyCalls;
+      delete globalThis.__contactNotifyMode;
     }
   });
 
@@ -605,7 +719,7 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     );
     assert.equal(first.status, 200);
     assert.equal(second.status, 200);
-    assert.equal(handle.calls.trello, 2);
+    assert.equal(handle.calls.notify, 2);
     assert.equal(handle.calls.crm, 2);
     assert.equal(handle.crmArgs[0].extraArgs, 0);
     assert.equal(handle.crmArgs[1].extraArgs, 0);
@@ -615,7 +729,7 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     );
   });
 
-  test("honeypot rejects before Trello and CRM", async () => {
+  test("honeypot rejects before CRM and staff email", async () => {
     const handle = harness();
     const result = await post(
       handle,
@@ -626,12 +740,12 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
       ok: false,
       error: GENERIC_VALIDATION_ERROR,
     });
-    assert.equal(handle.calls.trello, 0);
+    assert.equal(handle.calls.notify, 0);
     assert.equal(handle.calls.notify, 0);
     assert.equal(handle.calls.crm, 0);
   });
 
-  test("invalid contact data does not call Trello or CRM", async () => {
+  test("invalid contact data does not call CRM or staff email", async () => {
     const handle = harness();
     const result = await post(handle, manualPayload({ firstName: "A" }));
     assert.equal(result.status, 400);
@@ -639,27 +753,27 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
       ok: false,
       error: GENERIC_VALIDATION_ERROR,
     });
-    assert.equal(handle.calls.trello, 0);
+    assert.equal(handle.calls.notify, 0);
     assert.equal(handle.calls.crm, 0);
   });
 
-  test("invalid JSON does not call Trello or CRM", async () => {
+  test("invalid JSON does not call CRM or staff email", async () => {
     const handle = harness();
     const result = await post(handle, "{");
     assert.equal(result.status, 400);
     assert.deepEqual(result.json, { ok: false, error: "Invalid JSON body" });
-    assert.equal(handle.calls.trello, 0);
+    assert.equal(handle.calls.notify, 0);
     assert.equal(handle.calls.crm, 0);
   });
 
-  test("rate limit denies the request before Trello and CRM", async () => {
+  test("rate limit denies the request before CRM and staff email", async () => {
     const handle = harness({
       rateLimit: () => false,
     });
     const result = await post(handle, manualPayload());
     assert.equal(result.status, 429);
     assert.deepEqual(result.json, { ok: false, error: RATE_LIMIT_MESSAGE });
-    assert.equal(handle.calls.trello, 0);
+    assert.equal(handle.calls.notify, 0);
     assert.equal(handle.calls.notify, 0);
     assert.equal(handle.calls.crm, 0);
   });
@@ -680,11 +794,11 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     const result = await post(handle, manualPayload());
     assert.equal(result.status, 200);
     assert.deepEqual(result.json, { ok: true });
-    assert.equal(handle.calls.trello, 1);
+    assert.equal(handle.calls.notify, 1);
     assert.equal(handle.calls.crm, 1);
   });
 
-  test("configured reCAPTCHA rejects an empty token before Trello", async () => {
+  test("configured reCAPTCHA rejects an empty token before CRM", async () => {
     process.env.RECAPTCHA_SECRET_KEY = "test-secret";
     process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "test-site";
     const originalFetch = globalThis.fetch;
@@ -701,7 +815,7 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
         ok: false,
         error: GENERIC_VALIDATION_ERROR,
       });
-      assert.equal(handle.calls.trello, 0);
+      assert.equal(handle.calls.notify, 0);
       assert.equal(handle.calls.crm, 0);
       assert.equal(fetches, 0);
     } finally {
@@ -709,7 +823,7 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     }
   });
 
-  test("failed reCAPTCHA verification does not call Trello or CRM", async () => {
+  test("failed reCAPTCHA verification does not call CRM or staff email", async () => {
     process.env.RECAPTCHA_SECRET_KEY = "test-secret";
     process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "test-site";
     let verifyCalls = 0;
@@ -728,16 +842,13 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
       ok: false,
       error: GENERIC_VALIDATION_ERROR,
     });
-    assert.equal(handle.calls.trello, 0);
+    assert.equal(handle.calls.notify, 0);
     assert.equal(handle.calls.crm, 0);
   });
 
   test("route source does not pass provider errors to console.error", () => {
     const source = readSource("app/api/contact/route.ts");
-    assert.equal(
-      source.includes('console.error("[contact] Trello board email failed", error)'),
-      false,
-    );
+    const email = readSource("app/lib/contact-email.ts");
     assert.equal(
       source.includes(
         'console.error("[contact] Resend email failed", notificationResult.reason)',
@@ -745,6 +856,13 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
       false,
     );
     assert.equal(source.includes("logContactProviderFailure("), true);
+    assert.equal(source.includes("TRELLO_BOARD_EMAIL"), false);
+    assert.equal(source.includes("sendTrelloBoardEmail"), false);
+    assert.equal(source.toLowerCase().includes("trello"), false);
+    assert.equal(email.includes("TRELLO_BOARD_EMAIL"), false);
+    assert.equal(email.includes("sendTrelloBoardEmail"), false);
+    assert.equal(email.includes("buildTrelloCardDescription"), true);
+    assert.equal(email.includes("sendResendTextEmail"), true);
     assert.match(source, /from "@\/app\/lib\/contact-email"/);
     assert.match(source, /from "@\/app\/lib\/contact-crm"/);
     assert.equal(source.includes("NEXT_PUBLIC_CRM"), false);
@@ -792,19 +910,19 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
     };
 
     try {
-      const trello = harness({
-        trello: async () => {
+      const crmFailure = harness({
+        crm: async () => {
           throw leakedError(502);
         },
       });
-      const trelloResult = await post(trello, manualPayload());
-      assert.equal(trelloResult.status, 502);
-      assert.deepEqual(trelloResult.json, {
+      const crmResult = await post(crmFailure, manualPayload());
+      assert.equal(crmResult.status, 502);
+      assert.deepEqual(crmResult.json, {
         ok: false,
-        error: TRELLO_FAILURE_MESSAGE,
+        error: SUBMISSION_FAILURE_MESSAGE,
       });
-      assert.equal(trello.calls.notify, 0);
-      assert.equal(trello.calls.crm, 0);
+      assert.equal(crmFailure.calls.notify, 0);
+      assert.equal(crmFailure.calls.crm, 1);
 
       const staff = harness({
         notify: async () => {
@@ -821,7 +939,7 @@ describe("POST /api/contact contracts", { concurrency: false }, () => {
 
     assert.equal(logs.length, 2);
     assert.deepEqual(logs[0][1], {
-      event: "trello_board_email_failed",
+      event: "crm_ingest_failed",
       error_class: "Error",
       http_status_class: "5xx",
     });

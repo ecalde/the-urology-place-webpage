@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/clinical-research/renal-studies",
+        destination: "/clinical-research/hypertension-studies",
+        permanent: true,
+      },
+      {
         // Vanity URL for PAE (case-insensitive: /PAE, /pae, etc.)
         source: "/:pae([Pp][Aa][Ee])",
         destination: "/men/enlarged-prostate/prostatic-artery-embolization",

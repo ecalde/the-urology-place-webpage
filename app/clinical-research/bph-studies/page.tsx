@@ -12,7 +12,7 @@ export const metadata = pageMetadata({
   path: "/clinical-research/bph-studies",
   title: "BPH Clinical Trials in San Antonio",
   description:
-    "BPH clinical trials at The Urology Place in San Antonio, including research comparing treatments such as iTind and UroLift.",
+    "Enlarged prostate (BPH) clinical trials in San Antonio, including a study comparing iTind and UroLift for urinary symptoms and research on pulsed field ablation.",
 });
 
 const HERO_BG = "/images/bph%20studies/pexels-photo-4194857-2880w.jpeg";

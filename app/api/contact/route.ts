@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { ingestContactToCrm } from "@/app/lib/contact-crm";
-import {
-  sendContactNotificationEmail,
-  sendTrelloBoardEmail,
-} from "@/app/lib/contact-email";
+import { sendContactNotificationEmail } from "@/app/lib/contact-email";
 import {
   validateAndNormalizeContact,
   type RawContactBody,
@@ -22,7 +19,6 @@ import {
  * not pass overrides, so production keeps the real functions.
  */
 type ContactRouteOverrides = {
-  sendTrelloBoardEmail?: typeof sendTrelloBoardEmail;
   sendContactNotificationEmail?: typeof sendContactNotificationEmail;
   ingestContactToCrm?: typeof ingestContactToCrm;
   checkContactRateLimit?: typeof checkContactRateLimit;
@@ -32,8 +28,6 @@ type ContactRouteOverrides = {
 
 function resolveContactRouteEffects(overrides?: ContactRouteOverrides) {
   return {
-    sendTrelloBoardEmail:
-      overrides?.sendTrelloBoardEmail ?? sendTrelloBoardEmail,
     sendContactNotificationEmail:
       overrides?.sendContactNotificationEmail ?? sendContactNotificationEmail,
     ingestContactToCrm: overrides?.ingestContactToCrm ?? ingestContactToCrm,
@@ -59,8 +53,8 @@ const RATE_LIMIT_MESSAGE =
 const PROVIDER_ERROR_NAME_RE = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
 
 /**
- * Provider failures are logged without the Error object. Resend and Trello
- * messages can include recipients, names, or message text.
+ * Provider failures are logged without the Error object. Resend messages can
+ * include recipients, names, or message text.
  */
 function contactProviderErrorClass(error: unknown): string {
   if (error instanceof Error && PROVIDER_ERROR_NAME_RE.test(error.name)) {
@@ -79,7 +73,7 @@ function contactProviderStatusClass(error: unknown): string | undefined {
 }
 
 function logContactProviderFailure(
-  event: "trello_board_email_failed" | "staff_notification_email_failed",
+  event: "crm_ingest_failed" | "staff_notification_email_failed",
   error: unknown,
 ): void {
   const line: Record<string, string> = {
@@ -93,9 +87,13 @@ function logContactProviderFailure(
   console.error("[contact]", line);
 }
 
+const SUBMISSION_FAILURE_MESSAGE =
+  "The request could not be completed. Please try again later.";
+
 /**
- * POST /api/contact — validates the submission and creates a Trello card.
- * Google CRM ingest runs only after Trello succeeds, and only as best-effort.
+ * POST /api/contact — validates the submission and stores it in Google CRM.
+ * The visitor receives success only after CRM confirms the write.
+ * Staff email is a notification and runs only after that confirmation.
  */
 export async function handleContactPost(
   request: Request,
@@ -156,32 +154,39 @@ export async function handleContactPost(
 
   const normalized = validated.data;
 
+  // One CRM call. The client does not retry a timeout, and this route does
+  // not send the submission anywhere else. A timed-out Apps Script request
+  // may still commit after the client gives up; that result is not success,
+  // so the visitor is not told the lead was saved. Staff email waits until
+  // the CRM client reports outcome "success" (Apps Script ok === true).
+  let crmResult: Awaited<ReturnType<typeof ingestContactToCrm>>;
   try {
-    await effects.sendTrelloBoardEmail({ contact: normalized });
+    crmResult = await effects.ingestContactToCrm(normalized);
   } catch (error) {
-    logContactProviderFailure("trello_board_email_failed", error);
+    logContactProviderFailure("crm_ingest_failed", error);
     return NextResponse.json(
-      {
-        ok: false,
-        error: "The request could not be completed. Please try again later.",
-      },
+      { ok: false, error: SUBMISSION_FAILURE_MESSAGE },
       { status: 502 },
     );
   }
 
-  // Staff notification and CRM both start only after Trello has succeeded.
-  // They run together so CRM latency is not added on top of the staff email.
-  // A CRM failure is logged inside the CRM client and does not change this response.
-  const [notificationResult] = await Promise.allSettled([
-    effects.sendContactNotificationEmail({ contact: normalized }),
-    effects.ingestContactToCrm(normalized),
-  ]);
-
-  if (notificationResult.status === "rejected") {
-    logContactProviderFailure(
-      "staff_notification_email_failed",
-      notificationResult.reason,
+  if (crmResult.outcome !== "success") {
+    if (crmResult.outcome === "skipped") {
+      console.error("[contact]", {
+        event: "crm_ingest_not_confirmed",
+        outcome: "skipped",
+      });
+    }
+    return NextResponse.json(
+      { ok: false, error: SUBMISSION_FAILURE_MESSAGE },
+      { status: 502 },
     );
+  }
+
+  try {
+    await effects.sendContactNotificationEmail({ contact: normalized });
+  } catch (error) {
+    logContactProviderFailure("staff_notification_email_failed", error);
   }
 
   return NextResponse.json({

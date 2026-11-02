@@ -138,6 +138,70 @@ function displayValue(value) {
   return String(value);
 }
 
+function zoneParts(date, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timeZone || "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const map = {};
+  parts.forEach((part) => {
+    if (part.type !== "literal") map[part.type] = part.value;
+  });
+  if (map.hour === "24") map.hour = "00";
+  return map;
+}
+
+function formatZoned(date, timeZone, pattern) {
+  const map = zoneParts(date, timeZone);
+  if (pattern === "yyyy-MM-dd") {
+    return `${map.year}-${map.month}-${map.day}`;
+  }
+  if (pattern === "MM/dd/yyyy") {
+    return `${map.month}/${map.day}/${map.year}`;
+  }
+  if (pattern === "HH:mm") {
+    return `${map.hour}:${map.minute}`;
+  }
+  if (pattern === "MM/dd/yyyy HH:mm:ss") {
+    return `${map.month}/${map.day}/${map.year} ${map.hour}:${map.minute}:${map.second}`;
+  }
+  return "";
+}
+
+function parseZonedDate(text, timeZone) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/.exec(
+    String(text || ""),
+  );
+  if (!match) return new Date(NaN);
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  const year = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const desired = Date.UTC(year, month - 1, day, hour, minute, second);
+  let guess = desired;
+  for (let index = 0; index < 4; index += 1) {
+    const map = zoneParts(new Date(guess), timeZone);
+    const actual = Date.UTC(
+      Number(map.year),
+      Number(map.month) - 1,
+      Number(map.day),
+      Number(map.hour),
+      Number(map.minute),
+      Number(map.second),
+    );
+    guess += desired - actual;
+  }
+  return new Date(guess);
+}
+
 function columnNumber(letters) {
   let number = 0;
 
@@ -406,15 +470,19 @@ function createSheet(name, workbook) {
     },
     getRange(rowOrA1, column, numRows, numCols) {
       if (typeof rowOrA1 === "string") {
-        const match = /^([A-Z]+)(\d+)$/.exec(rowOrA1);
+        const match = /^([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?$/.exec(rowOrA1);
         if (!match) {
           throw new Error(`unsupported range ${rowOrA1}`);
         }
+        const startRow = Number(match[2]);
+        const startColumn = columnNumber(match[1]);
+        const endRow = match[4] ? Number(match[4]) : startRow;
+        const endColumn = match[3] ? columnNumber(match[3]) : startColumn;
         return makeRange(
-          Number(match[2]),
-          columnNumber(match[1]),
-          1,
-          1,
+          startRow,
+          startColumn,
+          endRow - startRow + 1,
+          endColumn - startColumn + 1,
         );
       }
       return makeRange(
@@ -442,6 +510,7 @@ function createHarness() {
   let uuid = 0;
   const docProps = {};
   const scriptProps = {};
+  const projectTriggers = [];
   const sheets = {};
   const workbook = {
     activeName: "Board",
@@ -513,12 +582,29 @@ function createHarness() {
         uuid += 1;
         return `00000000-0000-4000-8000-${String(uuid).padStart(12, "0")}`;
       },
-      formatDate(date) {
+      formatDate(date, timeZone, format) {
         const value = date instanceof Date ? date : new Date(date);
         if (Number.isNaN(value.getTime())) return "";
+        const pattern = String(format || "");
+        if (
+          pattern === "yyyy-MM-dd"
+          || pattern === "MM/dd/yyyy"
+          || pattern === "HH:mm"
+          || pattern === "MM/dd/yyyy HH:mm:ss"
+        ) {
+          return formatZoned(value, timeZone, pattern);
+        }
         const month = String(value.getMonth() + 1).padStart(2, "0");
         const day = String(value.getDate()).padStart(2, "0");
         return `${value.getFullYear()}-${month}-${day}`;
+      },
+      parseDate(text, timeZone, format) {
+        const parsed = format === "MM/dd/yyyy HH:mm:ss"
+          ? parseZonedDate(text, timeZone)
+          : new Date(text);
+        const VmDate = context.__exports && context.__exports.Date;
+        if (!VmDate || Number.isNaN(parsed.getTime())) return parsed;
+        return new VmDate(parsed.getTime());
       },
       newBlob(data, _type, name) {
         return makeBlob(String(data), name);
@@ -556,6 +642,39 @@ function createHarness() {
             lockState.held = false;
           },
         };
+      },
+    },
+    ScriptApp: {
+      getProjectTriggers() {
+        return projectTriggers.slice();
+      },
+      newTrigger(handler) {
+        const spec = { handler };
+        const builder = {
+          timeBased() {
+            return builder;
+          },
+          everyMinutes() {
+            return builder;
+          },
+          everyDays() {
+            return builder;
+          },
+          create() {
+            const trigger = {
+              getHandlerFunction() {
+                return spec.handler;
+              },
+            };
+            projectTriggers.push(trigger);
+            return trigger;
+          },
+        };
+        return builder;
+      },
+      deleteTrigger(trigger) {
+        const index = projectTriggers.indexOf(trigger);
+        if (index >= 0) projectTriggers.splice(index, 1);
       },
     },
     PropertiesService: {
@@ -619,12 +738,33 @@ function createHarness() {
         };
       },
       newDataValidation() {
+        const spec = {
+          checkbox: false,
+          values: null,
+          showDropdown: false,
+          allowInvalid: true,
+        };
         return {
           requireCheckbox() {
+            spec.checkbox = true;
+            return this;
+          },
+          requireValueInList(values, showDropdown) {
+            spec.values = Array.from(values);
+            spec.showDropdown = Boolean(showDropdown);
+            return this;
+          },
+          setAllowInvalid(allowInvalid) {
+            spec.allowInvalid = Boolean(allowInvalid);
             return this;
           },
           build() {
-            return { checkbox: true };
+            return {
+              checkbox: spec.checkbox,
+              values: spec.values ? spec.values.slice() : null,
+              showDropdown: spec.showDropdown,
+              allowInvalid: spec.allowInvalid,
+            };
           },
         };
       },
@@ -634,7 +774,7 @@ function createHarness() {
   };
 
   vm.runInNewContext(
-    `${source}\nthis.__exports = { EXECUTION_CACHE_, PATIENT_LEADS_SYSTEM, WEBSITE_INGEST_LEDGER_HEADERS_ };`,
+    `${source}\nthis.__exports = { EXECUTION_CACHE_, PATIENT_LEADS_SYSTEM, WEBSITE_INGEST_LEDGER_HEADERS_, Date };`,
     context,
   );
 
@@ -702,6 +842,7 @@ function createHarness() {
     logs.length = 0;
     lockState.held = false;
     fileSeq = 1;
+    projectTriggers.splice(0, projectTriggers.length);
     resetCache();
 
     const leadHeaders = context.__exports.PATIENT_LEADS_SYSTEM.headers.Leads;
@@ -868,7 +1009,19 @@ test("archive code parses and scheduled reminder cannot offload", () => {
   assert.doesNotMatch(setup, /newTrigger|createFolder|deleteRow|offloadArchivedLeads_/);
   assert.doesNotMatch(post, /offloadArchivedLeads_|archiveLeadById_|restoreColdStoredLead_|ArchiveIndex/);
   assert.doesNotMatch(commit, /offloadArchivedLeads_|refreshPatientArchiveView_/);
-  assert.doesNotMatch(scheduled, /offloadArchivedLeads_|clearOperationalDataRow_|deleteRow/);
+  assert.doesNotMatch(scheduled, /offloadArchivedLeads_|clearOperationalDataRow_|deleteRow|archiveEligibleScheduledLeads/);
+  assert.equal(
+    source.includes('const DERIVED_VIEW_AUTO_REFRESH_MINUTES_ =\n  1;'),
+    true,
+  );
+  assert.doesNotMatch(
+    extractFunction(source, "archiveEligibleScheduledLeads_"),
+    /offloadArchivedLeads_|DriveApp|deleteRow/,
+  );
+  assert.doesNotMatch(
+    extractFunction(source, "archiveEligibleScheduledLeadsDaily"),
+    /offloadArchivedLeads_|DriveApp|deleteRow|getUi\(/,
+  );
   const clearer = extractFunction(source, "clearOperationalDataRow_");
   assert.doesNotMatch(clearer, /clearDataValidations|clearFormat|deleteRow|\bfalse\b/);
   assert.match(extractFunction(source, "buildDashboardLeadSnapshot_"), /isLeadRowArchived_/);
@@ -926,9 +1079,11 @@ test("A-E archive eligibility and F-H board exclusion", () => {
   assert.equal(harness.leadValue(2, "archived"), false);
 
   const incomplete = context.archiveLeadById_("LEAD-SCHED-OPEN");
-  assert.equal(incomplete.code, "SCHEDULED_NOT_COMPLETE");
+  assert.equal(incomplete.code, "ARCHIVED");
   assert.equal(harness.leadValue(3, "status"), "Scheduled");
-  assert.equal(harness.activityTypes().includes("lead_archived"), false);
+  assert.equal(harness.leadValue(3, "workflow_complete"), false);
+  assert.equal(harness.leadValue(3, "archived"), true);
+  assert.equal(harness.activityTypes().includes("lead_archived"), true);
 
   const scheduled = context.archiveLeadById_("LEAD-SCHED-DONE", {
     reason: "ZZSECRETREASON",
@@ -953,11 +1108,11 @@ test("A-E archive eligibility and F-H board exclusion", () => {
   assert.equal(statuses.includes("LEAD-LOST"), false);
   assert.equal(statuses.includes("LEAD-UNRELATED"), false);
   assert.equal(statuses.includes("LEAD-OPEN"), true);
-  assert.equal(statuses.includes("LEAD-SCHED-OPEN"), true);
+  assert.equal(statuses.includes("LEAD-SCHED-OPEN"), false);
   assert.equal(statuses.includes("LEAD-BLANK"), true);
   assert.equal(statuses.includes("LEAD-BAD"), false);
   assert.equal(board.invalidStatusCount, 1);
-  assert.equal(board.totalCards, 3);
+  assert.equal(board.totalCards, 2);
 
   context.renderPatientArchive();
   const archive = harness.workbook.getSheetByName("Archive");
@@ -1525,6 +1680,8 @@ test("missing attachment files stay in metadata and blank archive means false", 
     "archived_by",
     "archived_from_status",
     "archive_reason",
+    "next_follow_up_window_start",
+    "next_follow_up_window_end",
   ]);
   const bare = harness.workbook.insertSheet("BareLeads");
   core.required.forEach((header, index) => {
@@ -1778,8 +1935,13 @@ test("dashboard operational population excludes archived leads", () => {
   );
   assert.equal(boardIds.includes("LEAD-MOVE"), false);
   assert.equal(boardIds.includes("LEAD-LIVE"), true);
-  assert.deepEqual(dashboardIds(), ["LEAD-LIVE"]);
-  assert.deepEqual(reasons(), ["ZZ-LIVE-REASON"]);
+  assert.deepEqual(dashboardIds().sort(), ["LEAD-LIVE", "LEAD-MOVE"]);
+  assert.deepEqual(reasons().sort(), ["ZZ-LIVE-REASON", "ZZ-MOVE-REASON"]);
+  const archivedSnapshot = context.buildDashboardLeadSnapshot_()
+    .find((row) => row[0] === "LEAD-MOVE");
+  assert.equal(archivedSnapshot[archivedSnapshot.length - 1], true);
+  assert.equal(archivedSnapshot[4], "Scheduled");
+  assert.equal(archivedSnapshot[15], true);
 
   context.renderPatientArchive();
   const archive = harness.workbook.getSheetByName("Archive");
@@ -1815,8 +1977,11 @@ test("dashboard operational population excludes archived leads", () => {
     "RESTORED",
   );
   assert.equal(liveSnapshot(), beforeColdStorage);
-  assert.deepEqual(dashboardIds(), ["LEAD-LIVE"]);
+  assert.deepEqual(dashboardIds().sort(), ["LEAD-LIVE", "LEAD-MOVE"]);
   assert.equal(harness.leadValue(3, "archived"), true);
+  const restoredSnapshot = context.buildDashboardLeadSnapshot_()
+    .find((row) => row[0] === "LEAD-MOVE");
+  assert.equal(restoredSnapshot[restoredSnapshot.length - 1], true);
 
   assert.equal(context.unarchiveLeadById_("LEAD-MOVE").code, "UNARCHIVED");
   const returned = context.buildDashboardLeadSnapshot_()
@@ -1824,6 +1989,7 @@ test("dashboard operational population excludes archived leads", () => {
   assert.ok(returned);
   assert.equal(returned[4], "Scheduled");
   assert.equal(returned[15], true);
+  assert.equal(returned[returned.length - 1], false);
   assert.equal(harness.leadValue(3, "workflow_complete"), true);
   assert.deepEqual(reasons().sort(), ["ZZ-LIVE-REASON", "ZZ-MOVE-REASON"]);
   const after = context.buildPatientBoardData_();
@@ -1981,5 +2147,973 @@ test("unused template FALSE rows normalize once and fail closed", () => {
   assert.equal(snapshot(leads), beforeSetup);
   assert.equal(harness.leadValue(2, "lead_id"), "LEAD-KEEP");
   assert.equal(harness.leadValue(5, "lead_id"), "LEAD-REAL");
+  harness.assertNoPhi();
+});
+
+function chicagoDate(dateKey, timeText) {
+  const parts = String(dateKey).split("-");
+  const parsed = context.Utilities.parseDate(
+    `${parts[1]}/${parts[2]}/${parts[0]} ${timeText || "12:00"}:00`,
+    "America/Chicago",
+    "MM/dd/yyyy HH:mm:ss",
+  );
+  return new context.__exports.Date(parsed.getTime());
+}
+
+function installWorkflowLists() {
+  const lists = harness.workbook.insertSheet("Lists");
+  lists.getRange("L2").setValue("Phone");
+  lists.getRange("L3").setValue("Email");
+  lists.getRange("L4").setValue("Text");
+  lists.getRange("G2").setValue("Insurance / Cost");
+  lists.getRange("G3").setValue("Unable to Reach");
+  lists.getRange("G4").setValue("No Longer Interested");
+  lists.getRange("G5").setValue("  Insurance/Cost ");
+  lists.getRange("G6").setValue("Cost / Insurance");
+  lists.getRange("G7").setValue("Insurance");
+  lists.getRange("G8").setValue("cost");
+  lists.getRange("H2").setValue("Vendor");
+  return lists;
+}
+
+function activityRows() {
+  const sheet = harness.workbook.getSheetByName("ActivityLog");
+  const map = harness.headerMap(sheet);
+  const rows = [];
+  for (let row = 2; row <= sheet.getLastRow(); row += 1) {
+    if (!sheet.getRange(row, map.activity_id).getValue()) continue;
+    rows.push({
+      type: sheet.getRange(row, map.activity_type).getValue(),
+      method: sheet.getRange(row, map.contact_method).getValue(),
+      outcome: sheet.getRange(row, map.contact_outcome).getValue(),
+      occurred: sheet.getRange(row, map.occurred_at).getValue(),
+      attempt: sheet.getRange(row, map.attempt_number).getValue(),
+      note: sheet.getRange(row, map.note).getValue(),
+      leadId: sheet.getRange(row, map.lead_id).getValue(),
+      source: sheet.getRange(row, map.activity_source).getValue(),
+      generated: sheet.getRange(row, map.system_generated).getValue(),
+    });
+  }
+  return rows;
+}
+
+test("contact attempts, case-lost reasons, and callback windows", () => {
+  harness.boot();
+  installWorkflowLists();
+  const reasonOptions = context.getCaseLostReasonOptions_(
+    harness.workbook.getSheetByName("Lists"),
+  );
+  assert.equal(JSON.stringify(reasonOptions), JSON.stringify([
+    "Insurance",
+    "Cost",
+    "Unable to Reach",
+    "No Longer Interested",
+  ]));
+  assert.equal(
+    JSON.stringify(context.normalizeCaseLostReasonOptions_([
+      "  Insurance/Cost ",
+      "insurance",
+      "COST",
+      "Cost / Insurance",
+      "Unable to Reach",
+    ])),
+    JSON.stringify(["Insurance", "Cost", "Unable to Reach"]),
+  );
+  assert.equal(
+    JSON.stringify(context.normalizeCaseLostReasonOptions_([
+      "insurance",
+      "Cost",
+      "Insurance / Cost",
+    ])),
+    JSON.stringify(["insurance", "Cost"]),
+  );
+  assert.equal(
+    context.formatLostReasonsForDisplay_("Insurance / Cost"),
+    "Insurance / Cost",
+  );
+  assert.equal(
+    context.formatLostReasonsForDisplay_("Insurance/Cost"),
+    "Insurance/Cost",
+  );
+  assert.equal(JSON.stringify(context.parseLostReasons_("Cost")), JSON.stringify(["Cost"]));
+  assert.equal(
+    JSON.stringify(context.parseLostReasons_("Insurance / Cost")),
+    JSON.stringify(["Insurance / Cost"]),
+  );
+  assert.equal(
+    JSON.stringify(context.parseLostReasons_("Insurance | Cost")),
+    JSON.stringify(["Insurance", "Cost"]),
+  );
+
+  harness.putLead(2, baseLead({
+    lead_id: "LEAD-CONTACT",
+    status: "Open Lead / Follow Up",
+    assigned_to: "Historical Staff",
+    reached_patient: true,
+    last_contact_outcome: "Left voicemail",
+    workflow_complete: true,
+    completed_at: chicagoDate("2026-01-02"),
+    completed_by: "Historical Staff",
+    attempt_count: 4,
+  }));
+
+  assert.throws(
+    () => context.patientDetailRecordContactAttempt("LEAD-CONTACT", {
+      contactMethods: [],
+    }),
+    /at least one contact method/i,
+  );
+  assert.equal(harness.leadValue(2, "attempt_count"), 4);
+
+  const one = context.patientDetailRecordContactAttempt("LEAD-CONTACT", {
+    contactMethods: ["Email"],
+    note: "emailed only",
+  });
+  assert.equal(one.changed, true);
+  assert.equal(harness.leadValue(2, "attempt_count"), 5);
+
+  const both = context.patientDetailRecordContactAttempt("LEAD-CONTACT", {
+    contactMethods: ["Email", "Phone"],
+    note: "called and emailed",
+  });
+  assert.equal(both.changed, true);
+  assert.equal(harness.leadValue(2, "attempt_count"), 6);
+  assert.equal(harness.leadValue(2, "status"), "Open Lead / Follow Up");
+  assert.equal(harness.leadValue(2, "assigned_to"), "Historical Staff");
+  assert.equal(harness.leadValue(2, "reached_patient"), true);
+  assert.equal(harness.leadValue(2, "last_contact_outcome"), "Left voicemail");
+  assert.equal(harness.leadValue(2, "workflow_complete"), true);
+  assert.equal(harness.leadValue(2, "completed_by"), "Historical Staff");
+
+  const contacts = activityRows().filter((row) => row.type === "contact_attempt");
+  const paired = contacts.filter((row) => row.attempt === 6);
+  assert.equal(paired.length, 2);
+  assert.deepEqual(paired.map((row) => row.method), ["Phone", "Email"]);
+  assert.equal(paired[0].occurred.getTime(), paired[1].occurred.getTime());
+  assert.equal(paired[0].note, "called and emailed");
+  assert.equal(paired[1].note, "called and emailed");
+  assert.equal(paired.every((row) => row.outcome === ""), true);
+
+  const followUp = context.patientDetailSetFollowUpDate("LEAD-CONTACT", {
+    followUpDateText: "2026-10-22",
+    windowStartText: "10:00",
+    windowEndText: "11:00",
+    note: "callback window",
+  });
+  assert.equal(followUp.changed, true);
+  assert.equal(harness.leadValue(2, "workflow_complete"), true);
+  assert.equal(
+    context.formatHtmlTimeFromValue_(
+      harness.leadValue(2, "next_follow_up_window_start"),
+      "America/Chicago",
+    ),
+    "10:00",
+  );
+  assert.equal(
+    context.formatHtmlTimeFromValue_(
+      harness.leadValue(2, "next_follow_up_window_end"),
+      "America/Chicago",
+    ),
+    "11:00",
+  );
+  const followUpAudit = activityRows().find((row) => row.type === "follow_up_date_set");
+  assert.match(followUpAudit.note, /callback window/);
+
+  context.patientDetailClearFollowUpDate("LEAD-CONTACT", {});
+  assert.equal(harness.leadValue(2, "next_follow_up_on"), "");
+  assert.equal(harness.leadValue(2, "next_follow_up_window_start"), "");
+  assert.equal(harness.leadValue(2, "next_follow_up_window_end"), "");
+  assert.equal(harness.leadValue(2, "workflow_complete"), true);
+  assert.equal(
+    activityRows().some((row) => row.type === "follow_up_date_cleared"),
+    true,
+  );
+
+  const moved = context.patientDetailMoveWorkflow("LEAD-CONTACT", {
+    targetStatus: "Case Lost",
+    reasons: ["Cost", "Insurance"],
+    note: "Aetna not accepted",
+  });
+  assert.equal(moved.changed, true);
+  assert.equal(harness.leadValue(2, "lost_reason"), "Insurance | Cost");
+  assert.equal(harness.leadValue(2, "workflow_complete"), true);
+  assert.equal(
+    JSON.stringify(context.parseLostReasons_(harness.leadValue(2, "lost_reason"))),
+    JSON.stringify(["Insurance", "Cost"]),
+  );
+  harness.assertNoPhi();
+});
+
+test("open-lane callback priority leaves the other lanes unchanged", () => {
+  const classify = (spec) => context.classifyOpenCallback_(spec).key;
+  assert.equal(classify({
+    dateKey: "2026-10-19",
+    todayKey: "2026-10-20",
+    nowMinutes: 600,
+  }), "overdue");
+  assert.equal(classify({
+    dateKey: "2026-10-20",
+    todayKey: "2026-10-20",
+    nowMinutes: 600,
+  }), "due_today");
+  assert.equal(classify({
+    dateKey: "2026-10-22",
+    todayKey: "2026-10-20",
+    nowMinutes: 600,
+  }), "upcoming");
+  assert.equal(classify({
+    dateKey: "2026-10-20",
+    todayKey: "2026-10-20",
+    nowMinutes: 9 * 60,
+    startMinutes: 10 * 60,
+  }), "upcoming");
+  assert.equal(classify({
+    dateKey: "2026-10-20",
+    todayKey: "2026-10-20",
+    nowMinutes: 10 * 60,
+    startMinutes: 10 * 60,
+  }), "due_today");
+  assert.equal(classify({
+    dateKey: "2026-10-19",
+    todayKey: "2026-10-20",
+    nowMinutes: 15 * 60,
+    startMinutes: 10 * 60,
+  }), "overdue");
+  assert.equal(classify({
+    dateKey: "2026-10-20",
+    todayKey: "2026-10-20",
+    nowMinutes: 10 * 60 + 30,
+    startMinutes: 10 * 60,
+    endMinutes: 11 * 60,
+  }), "due_today");
+  assert.equal(classify({
+    dateKey: "2026-10-20",
+    todayKey: "2026-10-20",
+    nowMinutes: 11 * 60 + 1,
+    startMinutes: 10 * 60,
+    endMinutes: 11 * 60,
+  }), "overdue");
+
+  const early = context.classifyOpenCallback_({
+    dateKey: "2026-10-22",
+    todayKey: "2026-10-20",
+    nowMinutes: 600,
+    startMinutes: 14 * 60 + 30,
+  });
+  const later = context.classifyOpenCallback_({
+    dateKey: "2026-10-23",
+    todayKey: "2026-10-20",
+    nowMinutes: 600,
+    startMinutes: 9 * 60,
+  });
+  assert.equal(early.key, "upcoming");
+  assert.equal(later.key, "upcoming");
+  assert.ok(early.sortAt < later.sortAt);
+
+  function openCard(id, key, sortAt, attempts, created, name) {
+    return {
+      leadId: id,
+      patient: { fullName: name },
+      workflow: {
+        followUpState: { key },
+        attemptCount: attempts,
+      },
+      sort: { followUpOn: sortAt, createdAt: created },
+    };
+  }
+  const openCards = [
+    openCard("normal-new", "", 0, 2, 50, "Zed"),
+    openCard("future-late", "upcoming", 300, 0, 1, "Late"),
+    openCard("due", "due_today", 20, 1, 1, "Due"),
+    openCard("future-early", "upcoming", 100, 4, 1, "Early"),
+    openCard("future-new", "upcoming", 200, 0, 80, "Future"),
+    openCard("overdue", "overdue", 80, 3, 1, "Over"),
+    openCard("normal-touched", "", 0, 1, 10, "Touched"),
+    openCard("normal-untouched", "", 0, 0, 40, "Untouched"),
+  ];
+  context.sortOpenBoardCards_(openCards);
+  assert.deepEqual(openCards.map((card) => card.leadId), [
+    "future-new",
+    "normal-untouched",
+    "future-late",
+    "normal-new",
+    "normal-touched",
+    "due",
+    "future-early",
+    "overdue",
+  ]);
+  const followCards = [
+    openCard("normal-new", "", 0, 2, 50, "Zed"),
+    openCard("future-late", "upcoming", 300, 0, 1, "Late"),
+    openCard("due", "due_today", 20, 1, 1, "Due"),
+    openCard("future-early", "upcoming", 100, 4, 1, "Early"),
+    openCard("future-new", "upcoming", 200, 0, 80, "Future"),
+    openCard("overdue", "overdue", 80, 3, 1, "Over"),
+    openCard("normal-touched", "", 0, 1, 10, "Touched"),
+    openCard("normal-untouched", "", 0, 0, 40, "Untouched"),
+  ];
+  context.sortFollowUpBoardCards_(followCards);
+  assert.deepEqual(followCards.map((card) => card.leadId), [
+    "overdue",
+    "due",
+    "future-early",
+    "future-new",
+    "future-late",
+    "normal-untouched",
+    "normal-touched",
+    "normal-new",
+  ]);
+
+  const scheduledCards = [
+    {
+      leadId: "DONE",
+      patient: { fullName: "Done" },
+      workflow: { scheduleDateMissing: false, workflowComplete: true },
+      sort: { scheduledDate: 1, lastActivityAt: 1 },
+    },
+    {
+      leadId: "STILL",
+      patient: { fullName: "Still" },
+      workflow: { scheduleDateMissing: false, workflowComplete: false },
+      sort: { scheduledDate: 9, lastActivityAt: 9 },
+    },
+  ];
+  context.sortScheduledBoardCards_(scheduledCards);
+  assert.deepEqual(scheduledCards.map((card) => card.leadId), ["DONE", "STILL"]);
+
+  const closedCards = [
+    {
+      leadId: "COMPLETE",
+      patient: { fullName: "Complete" },
+      workflow: { workflowComplete: true },
+      sort: { lastActivityAt: 9 },
+    },
+    {
+      leadId: "INCOMPLETE",
+      patient: { fullName: "Incomplete" },
+      workflow: { workflowComplete: false },
+      sort: { lastActivityAt: 1 },
+    },
+  ];
+  context.sortClosedBoardCards_(closedCards);
+  assert.equal(closedCards[0].leadId, "COMPLETE");
+  assert.doesNotMatch(
+    extractFunction(source, "sortScheduledBoardCards_"),
+    /getOpenBoardPriority_/,
+  );
+  assert.doesNotMatch(
+    extractFunction(source, "sortClosedBoardCards_"),
+    /getOpenBoardPriority_/,
+  );
+
+  harness.boot();
+  const todayKey = context.Utilities.formatDate(
+    new Date(),
+    "America/Chicago",
+    "yyyy-MM-dd",
+  );
+  harness.putLead(2, baseLead({
+    lead_id: "LEAD-PLAIN",
+    status: "Open Lead / Follow Up",
+    first_name: "Plain",
+    last_name: "Lead",
+    attempt_count: 0,
+    created_at: chicagoDate("2026-01-01"),
+  }));
+  harness.putLead(3, baseLead({
+    lead_id: "LEAD-CALLBACK",
+    status: "Open Lead / Follow Up",
+    first_name: "Callback",
+    last_name: "Lead",
+    attempt_count: 2,
+    created_at: chicagoDate("2026-03-01"),
+    next_follow_up_on: chicagoDate(
+      context.addCalendarDaysToDateKey_(todayKey, -1),
+    ),
+  }));
+  harness.putLead(4, baseLead({
+    lead_id: "LEAD-WINDOW",
+    status: "Open Lead / Follow Up",
+    first_name: "Window",
+    last_name: "Lead",
+    attempt_count: 3,
+    created_at: chicagoDate("2026-04-01"),
+    next_follow_up_on: chicagoDate(todayKey),
+    next_follow_up_window_start: chicagoDate(todayKey, "10:00"),
+    next_follow_up_window_end: chicagoDate(todayKey, "11:00"),
+  }));
+  harness.putLead(5, baseLead({
+    lead_id: "LEAD-FUTURE",
+    status: "Open Lead / Follow Up",
+    first_name: "Future",
+    last_name: "Lead",
+    attempt_count: 0,
+    created_at: chicagoDate("2026-02-01"),
+    next_follow_up_on: chicagoDate(
+      context.addCalendarDaysToDateKey_(todayKey, 21),
+    ),
+  }));
+  harness.putLead(6, baseLead({
+    lead_id: "LEAD-DUE",
+    status: "Open Lead / Follow Up",
+    first_name: "Due",
+    last_name: "Lead",
+    attempt_count: 4,
+    created_at: chicagoDate("2026-05-01"),
+    next_follow_up_on: chicagoDate(todayKey),
+  }));
+  context.__exports.EXECUTION_CACHE_.canonicalTables = {};
+  context.__exports.EXECUTION_CACHE_.leadRowsById = {};
+  const board = context.buildPatientBoardData_();
+  const open = board.lanes.find((lane) => lane.status === "Open Lead");
+  const follow = board.lanes.find((lane) => lane.status === "Follow Up");
+  assert.deepEqual(Array.from(open.cards.map((card) => card.leadId)), ["LEAD-PLAIN"]);
+  const ids = follow.cards.map((card) => card.leadId);
+  assert.ok(ids.indexOf("LEAD-CALLBACK") < ids.indexOf("LEAD-DUE"));
+  assert.ok(ids.indexOf("LEAD-DUE") < ids.indexOf("LEAD-FUTURE"));
+  assert.equal(ids.includes("LEAD-PLAIN"), false);
+  const windowCard = follow.cards.find((card) => card.leadId === "LEAD-WINDOW");
+  assert.match(windowCard.workflow.followUpState.callbackLabel, /10:00 AM/);
+  assert.match(windowCard.workflow.followUpState.callbackLabel, /11:00 AM/);
+  const plainCard = open.cards.find((card) => card.leadId === "LEAD-PLAIN");
+  const futureCard = follow.cards.find((card) => card.leadId === "LEAD-FUTURE");
+  assert.ok(
+    context.getFollowUpBoardPriority_(futureCard) <
+      context.getFollowUpBoardPriority_(plainCard),
+  );
+  assert.equal(context.getFollowUpBoardPriority_(futureCard) > context.getFollowUpBoardPriority_(
+    follow.cards.find((card) => card.leadId === "LEAD-DUE"),
+  ), true);
+  harness.assertNoPhi();
+});
+
+test("scheduled leads auto-archive after the configured calendar days", () => {
+  harness.boot();
+  assert.equal(context.getConfigValue_("scheduled_auto_archive_days"), "7");
+  assert.equal(context.getConfigValue_("archive_cold_storage_days"), "365");
+  context.setConfigValue_("archive_cold_storage_days", "365");
+  context.__exports.EXECUTION_CACHE_.configRows = null;
+  const setup = context.setupLeadArchiveSchema_();
+  assert.equal(setup.ok, true);
+  context.__exports.EXECUTION_CACHE_.configRows = null;
+  assert.equal(context.getConfigValue_("archive_cold_storage_days"), "365");
+
+  const todayKey = context.Utilities.formatDate(
+    new Date(),
+    "America/Chicago",
+    "yyyy-MM-dd",
+  );
+  harness.putLead(2, baseLead({
+    lead_id: "LEAD-YOUNG",
+    status: "Scheduled",
+    workflow_complete: false,
+    scheduled_date: chicagoDate(context.addCalendarDaysToDateKey_(todayKey, -6)),
+  }));
+  harness.putLead(3, baseLead({
+    lead_id: "LEAD-DUE",
+    status: "Scheduled",
+    workflow_complete: false,
+    scheduled_date: chicagoDate(context.addCalendarDaysToDateKey_(todayKey, -7)),
+  }));
+  harness.putLead(4, baseLead({
+    lead_id: "LEAD-BLANKDATE",
+    status: "Scheduled",
+    workflow_complete: true,
+  }));
+  harness.putLead(5, baseLead({
+    lead_id: "LEAD-MOVED",
+    status: "Scheduled",
+    workflow_complete: false,
+    scheduled_date: chicagoDate(todayKey),
+  }));
+  harness.writeObject(harness.workbook.getSheetByName("ActivityLog"), 2, {
+    activity_id: "ACT-KEEP",
+    lead_id: "LEAD-DUE",
+    activity_type: "contact_attempt",
+    contact_method: "Phone",
+    occurred_at: chicagoDate("2026-10-01", "10:43"),
+    note: "earlier call",
+  });
+  harness.writeObject(harness.workbook.getSheetByName("Attachments"), 2, {
+    attachment_id: "ATT-KEEP",
+    lead_id: "LEAD-DUE",
+    drive_file_id: "ATT-FILE",
+    file_name: "note.pdf",
+  });
+  context.__exports.EXECUTION_CACHE_.canonicalTables = {};
+  context.__exports.EXECUTION_CACHE_.leadRowsById = {};
+
+  context.setConfigValue_("scheduled_auto_archive_days", "nope");
+  context.__exports.EXECUTION_CACHE_.configRows = null;
+  assert.equal(context.archiveEligibleScheduledLeadsDaily().code, "CONFIG_INVALID");
+  assert.equal(harness.leadValue(3, "archived"), false);
+
+  context.setConfigValue_("scheduled_auto_archive_days", "7");
+  context.__exports.EXECUTION_CACHE_.configRows = null;
+  const props = context.PropertiesService.getDocumentProperties();
+  props.deleteProperty("PASS25_DIRTY_BOARD");
+  props.deleteProperty("PASS25_DIRTY_DASHBOARD");
+  const drivesBefore = harness.driveReads.length;
+  const archived = context.archiveEligibleScheduledLeadsDaily();
+  assert.equal(archived.ok, true);
+  assert.equal(archived.archivedCount, 1);
+  assert.equal(harness.leadValue(2, "archived"), false);
+  assert.equal(harness.leadValue(3, "archived"), true);
+  assert.equal(harness.leadValue(3, "archived_by"), "System");
+  assert.equal(harness.leadValue(3, "archived_from_status"), "Scheduled");
+  assert.equal(harness.leadValue(3, "status"), "Scheduled");
+  assert.equal(harness.leadValue(3, "workflow_complete"), false);
+  assert.equal(
+    Number.isFinite(harness.leadValue(3, "scheduled_date").getTime()),
+    true,
+  );
+  assert.equal(
+    harness.leadValue(3, "archive_reason"),
+    "Automatically archived 7 days after scheduled visit.",
+  );
+  assert.equal(harness.leadValue(4, "archived"), false);
+  assert.equal(harness.leadValue(5, "archived"), false);
+  assert.equal(harness.leadValue(3, "lead_id"), "LEAD-DUE");
+  const kept = activityRows().find((row) => row.method === "Phone");
+  assert.equal(kept.leadId, "LEAD-DUE");
+  assert.equal(kept.note, "earlier call");
+  const audit = activityRows().find((row) => row.type === "lead_archived");
+  assert.equal(audit.leadId, "LEAD-DUE");
+  assert.equal(audit.source, "System");
+  assert.equal(audit.generated, true);
+  assert.equal(
+    harness.idsIn("Attachments", "attachment_id").includes("ATT-KEEP"),
+    true,
+  );
+  assert.equal(props.getProperty("PASS25_DIRTY_BOARD"), "1");
+  assert.equal(props.getProperty("PASS25_DIRTY_DASHBOARD"), "1");
+  assert.equal(harness.driveReads.length, drivesBefore);
+  assert.equal(
+    context.evaluateArchiveEligibility_("Scheduled", false).ok,
+    true,
+  );
+  assert.equal(
+    context.evaluateArchiveEligibility_("Scheduled", true).ok,
+    true,
+  );
+
+  const refreshed = context.refreshDirtyDerivedViewsScheduled();
+  assert.equal(refreshed.skipped, false);
+  const archive = harness.workbook.getSheetByName("Archive");
+  const archiveGrid = archive.getRange(
+    1,
+    1,
+    Math.max(archive.getLastRow(), 1),
+    12,
+  ).getValues();
+  assert.equal(
+    archiveGrid.some((row) => row.includes("LEAD-DUE")),
+    true,
+  );
+  assert.notEqual(props.getProperty("PASS25_DIRTY_BOARD"), "1");
+
+  const second = context.archiveEligibleScheduledLeadsDaily();
+  assert.equal(second.archivedCount, 0);
+  assert.equal(harness.idsIn("Leads", "lead_id").filter((id) => id === "LEAD-DUE").length, 1);
+
+  harness.lockState.held = true;
+  assert.equal(context.archiveEligibleScheduledLeadsDaily().code, "LOCK_TIMEOUT");
+  harness.lockState.held = false;
+
+  const firstInstall = context.installScheduledAutoArchiveTrigger();
+  const secondInstall = context.installScheduledAutoArchiveTrigger();
+  assert.equal(firstInstall.created, true);
+  assert.equal(secondInstall.created, false);
+  assert.equal(secondInstall.count, 1);
+  assert.equal(
+    context.ScriptApp.getProjectTriggers()
+      .filter((trigger) => trigger.getHandlerFunction() === "archiveEligibleScheduledLeadsDaily")
+      .length,
+    1,
+  );
+  assert.equal(context.removeScheduledAutoArchiveTrigger().removed, 1);
+  assert.equal(context.installScheduledAutoArchiveTrigger().created, true);
+
+  assert.equal(context.unarchiveLeadById_("LEAD-DUE").code, "UNARCHIVED");
+  assert.equal(harness.leadValue(3, "archived"), false);
+  assert.equal(harness.leadValue(3, "status"), "Scheduled");
+  harness.assertNoPhi();
+});
+
+test("archived unable-to-reach history keeps exact contact timestamps", () => {
+  harness.boot();
+  installWorkflowLists();
+  harness.putLead(2, baseLead({
+    lead_id: "LEAD-REACH",
+    status: "Open Lead / Follow Up",
+    attempt_count: 0,
+    reached_patient: false,
+    last_contact_outcome: "",
+  }));
+  const recorded = context.patientDetailRecordContactAttempt("LEAD-REACH", {
+    contactMethods: ["Text", "Phone", "Email"],
+    note: "all three",
+  });
+  assert.equal(recorded.changed, true);
+  assert.equal(harness.leadValue(2, "attempt_count"), 1);
+  context.patientDetailMoveWorkflow("LEAD-REACH", {
+    targetStatus: "Case Lost",
+    reasons: ["Unable to Reach"],
+  });
+  assert.equal(harness.leadValue(2, "lost_reason"), "Unable to Reach");
+  assert.equal(context.archiveLeadById_("LEAD-REACH").code, "ARCHIVED");
+  const methods = activityRows()
+    .filter((row) => row.type === "contact_attempt")
+    .map((row) => ({
+      method: row.method,
+      time: row.occurred.getTime(),
+      note: row.note,
+    }));
+  assert.deepEqual(methods.map((row) => row.method), ["Phone", "Email", "Text"]);
+  assert.equal(methods[0].time, methods[1].time);
+  assert.equal(methods[1].time, methods[2].time);
+  assert.equal(methods.every((row) => row.note === "all three"), true);
+  assert.equal(harness.leadValue(2, "reached_patient"), false);
+  assert.equal(harness.leadValue(2, "last_contact_outcome"), "");
+  assert.equal(harness.leadValue(2, "lead_id"), "LEAD-REACH");
+  assert.equal(context.unarchiveLeadById_("LEAD-REACH").code, "UNARCHIVED");
+  assert.equal(activityRows().filter((row) => row.type === "contact_attempt").length, 3);
+  harness.assertNoPhi();
+});
+
+test("open lead and follow up split keeps adjacent workflows", () => {
+  harness.boot();
+  installWorkflowLists();
+  const layout = {
+    laneStarts: [2, 7, 12, 17, 22],
+    spacerColumns: [6, 11, 16, 21],
+    lastBoardColumn: 25,
+    actionRailFirstColumn: 26,
+    actionRailColumnCount: 4,
+    applicationHeaderLastColumn: 29,
+  };
+  assert.equal(
+    source.includes("lastBoardColumn: 25"),
+    true,
+  );
+  assert.equal(source.includes("actionRailFirstColumn: 26"), true);
+  assert.ok(layout.actionRailFirstColumn > layout.lastBoardColumn);
+  assert.equal(
+    layout.actionRailFirstColumn + layout.actionRailColumnCount - 1,
+    layout.applicationHeaderLastColumn,
+  );
+
+  context.setConfigValue_("default_status", "Scheduled");
+  context.__exports.EXECUTION_CACHE_.configRows = null;
+  assert.equal(context.normalizeLegacyDefaultStatus_().changed, false);
+  assert.equal(context.getConfigValue_("default_status"), "Scheduled");
+
+  context.setConfigValue_("default_status", "Open Lead / Follow Up");
+  context.__exports.EXECUTION_CACHE_.configRows = null;
+  assert.equal(context.resolveConfiguredDefaultLeadStatus_(), "Open Lead");
+  harness.putLead(4, {
+    first_name: "New",
+    last_name: "Lead",
+  });
+  const created = context.initializeLeadRow_(4, { source: "Employee" });
+  assert.match(created, /^LEAD-/);
+  assert.equal(harness.leadValue(4, "status"), "Open Lead");
+  assert.equal(context.normalizeLegacyDefaultStatus_().changed, true);
+  assert.equal(context.getConfigValue_("default_status"), "Open Lead");
+  assert.equal(context.normalizeLegacyDefaultStatus_().changed, false);
+
+  const todayKey = context.Utilities.formatDate(
+    new Date(),
+    "America/Chicago",
+    "yyyy-MM-dd",
+  );
+  harness.putLead(2, baseLead({
+    lead_id: "LEAD-OPEN",
+    status: "Open Lead",
+    attempt_count: 0,
+    created_at: chicagoDate("2026-01-01"),
+  }));
+  harness.putLead(3, baseLead({
+    lead_id: "LEAD-FOLLOW",
+    status: "Follow Up",
+    attempt_count: 2,
+    next_follow_up_on: chicagoDate(
+      context.addCalendarDaysToDateKey_(todayKey, -3),
+    ),
+  }));
+  harness.putLead(5, baseLead({
+    lead_id: "LEAD-SCHED",
+    status: "Scheduled",
+    scheduled_date: chicagoDate("2020-01-01"),
+    workflow_complete: true,
+  }));
+
+  const attempted = context.patientDetailRecordContactAttempt("LEAD-OPEN", {
+    contactMethods: ["Phone"],
+    note: "called",
+  });
+  assert.equal(attempted.changed, true);
+  assert.equal(harness.leadValue(2, "status"), "Open Lead");
+
+  const saved = context.patientDetailSetFollowUpDate("LEAD-OPEN", {
+    followUpDateText: "2026-12-15",
+    note: "call back",
+  });
+  assert.equal(saved.changed, true);
+  assert.equal(harness.leadValue(2, "status"), "Follow Up");
+  const statusEvents = () => activityRows().filter((row) => row.type === "status_change");
+  assert.equal(
+    statusEvents().filter((row) => row.leadId === "LEAD-OPEN").length,
+    1,
+  );
+
+  const updated = context.patientDetailSetFollowUpDate("LEAD-OPEN", {
+    followUpDateText: "2026-12-20",
+  });
+  assert.equal(updated.changed, true);
+  assert.equal(harness.leadValue(2, "status"), "Follow Up");
+  assert.equal(
+    statusEvents().filter((row) => row.leadId === "LEAD-OPEN").length,
+    1,
+  );
+
+  context.patientDetailClearFollowUpDate("LEAD-OPEN", {});
+  assert.equal(harness.leadValue(2, "status"), "Open Lead");
+  assert.equal(harness.leadValue(2, "next_follow_up_on"), "");
+  assert.equal(
+    statusEvents().filter((row) => row.leadId === "LEAD-OPEN").length,
+    2,
+  );
+
+  const manual = context.patientDetailMoveWorkflow("LEAD-OPEN", {
+    targetStatus: "Follow Up",
+  });
+  assert.equal(manual.changed, true);
+  assert.equal(harness.leadValue(2, "status"), "Follow Up");
+  assert.equal(harness.leadValue(2, "next_follow_up_on"), "");
+  assert.equal(context.archiveLeadById_("LEAD-OPEN").code, "INELIGIBLE_STATUS");
+  const back = context.patientDetailMoveWorkflow("LEAD-OPEN", {
+    targetStatus: "Open Lead",
+  });
+  assert.equal(back.changed, true);
+  assert.equal(harness.leadValue(2, "status"), "Open Lead");
+
+  const scheduled = context.patientDetailScheduleLead("LEAD-FOLLOW", {
+    scheduledDateText: "2026-11-02",
+    note: "booked",
+  });
+  assert.equal(scheduled.changed, true);
+  assert.equal(harness.leadValue(3, "status"), "Scheduled");
+  assert.equal(harness.leadValue(3, "next_follow_up_on"), "");
+
+  const lost = context.patientDetailMoveWorkflow("LEAD-OPEN", {
+    targetStatus: "Case Lost",
+    reasons: ["Cost"],
+    note: "too expensive",
+  });
+  assert.equal(lost.changed, true);
+  assert.equal(harness.leadValue(2, "status"), "Case Lost");
+  const unrelated = context.patientDetailMoveWorkflow("LEAD-OPEN", {
+    targetStatus: "Unrelated",
+    unrelatedType: "Vendor",
+  });
+  assert.equal(unrelated.changed, true);
+  assert.equal(harness.leadValue(2, "status"), "Unrelated");
+  assert.equal(harness.leadValue(2, "lost_reason"), "");
+
+  const reopened = context.patientDetailMoveWorkflow("LEAD-OPEN", {
+    targetStatus: "Follow Up",
+    note: "patient called back",
+  });
+  assert.equal(reopened.changed, true);
+  assert.equal(harness.leadValue(2, "status"), "Follow Up");
+  assert.equal(context.archiveLeadById_("LEAD-OPEN").code, "INELIGIBLE_STATUS");
+  const auto = context.archiveEligibleScheduledLeads_(7, new Date("2026-10-20T18:00:00Z"));
+  assert.equal(auto.archivedCount, 1);
+  assert.equal(harness.leadValue(5, "archived"), true);
+  assert.equal(harness.leadValue(2, "archived"), false);
+
+  harness.putLead(6, baseLead({
+    lead_id: "LEAD-LEGACY-DATE",
+    status: "Open Lead / Follow Up",
+    archived: true,
+    archived_from_status: "Open Lead / Follow Up",
+    next_follow_up_on: chicagoDate("2026-12-01"),
+  }));
+  harness.putLead(7, baseLead({
+    lead_id: "LEAD-LEGACY-NONE",
+    status: "Open Lead / Follow Up",
+    archived: true,
+    archived_from_status: "Open Lead / Follow Up",
+  }));
+  assert.equal(context.unarchiveLeadById_("LEAD-LEGACY-DATE").code, "UNARCHIVED");
+  assert.equal(harness.leadValue(6, "status"), "Follow Up");
+  assert.equal(harness.leadValue(6, "archived_from_status"), "Open Lead / Follow Up");
+  assert.equal(context.unarchiveLeadById_("LEAD-LEGACY-NONE").code, "UNARCHIVED");
+  assert.equal(harness.leadValue(7, "status"), "Open Lead");
+
+  harness.putLead(8, baseLead({
+    lead_id: "LEAD-MIGRATE-DATE",
+    status: "Open Lead / Follow Up",
+    next_follow_up_on: chicagoDate("2026-12-02"),
+    created_at: chicagoDate("2026-01-03"),
+    attempt_count: 1,
+    first_name: "ZZSECRETNAME",
+  }));
+  harness.putLead(9, baseLead({
+    lead_id: "LEAD-MIGRATE-NONE",
+    status: "Open Lead / Follow Up",
+    attempt_count: 0,
+    created_at: chicagoDate("2026-01-02"),
+  }));
+  const activity = harness.workbook.getSheetByName("ActivityLog");
+  const activityMap = harness.headerMap(activity);
+  const historicalRow = activity.getLastRow() + 1;
+  harness.writeObject(activity, historicalRow, {
+    activity_id: "ACT-HISTORICAL",
+    lead_id: "LEAD-MIGRATE-NONE",
+    activity_type: "status_change",
+    previous_value: "Open Lead / Follow Up",
+    new_value: "Scheduled",
+    from_status: "Open Lead / Follow Up",
+    to_status: "Scheduled",
+    note: "historical Open Lead / Follow Up event",
+    actor_name: "Historical Staff",
+    system_generated: false,
+  });
+
+  const beforePreview = JSON.stringify(
+    harness.workbook.getSheetByName("Leads").getRange(8, 1, 2, 5).getValues(),
+  );
+  const preview = context.previewOpenFollowUpStatusMigration();
+  assert.equal(preview.legacyRows, 2);
+  assert.equal(preview.toFollowUp, 1);
+  assert.equal(preview.toOpenLead, 1);
+  assert.equal(preview.changed, 0);
+  assert.equal(
+    JSON.stringify(
+      harness.workbook.getSheetByName("Leads").getRange(8, 1, 2, 5).getValues(),
+    ),
+    beforePreview,
+  );
+  assert.equal(harness.logs.join("\n").includes("ZZSECRETNAME"), false);
+
+  const migrated = context.migrateOpenFollowUpStatuses();
+  assert.equal(migrated.changed, 2);
+  assert.equal(migrated.toFollowUp, 1);
+  assert.equal(migrated.toOpenLead, 1);
+  assert.equal(harness.leadValue(8, "status"), "Follow Up");
+  assert.equal(harness.leadValue(9, "status"), "Open Lead");
+  assert.equal(harness.leadValue(8, "first_name"), "ZZSECRETNAME");
+  assert.equal(
+    activity.getRange(historicalRow, activityMap.note).getValue(),
+    "historical Open Lead / Follow Up event",
+  );
+  assert.equal(
+    activity.getRange(historicalRow, activityMap.previous_value).getValue(),
+    "Open Lead / Follow Up",
+  );
+  const migrationEvents = activityRows().filter((row) =>
+    String(row.note || "").includes("System migration: split legacy")
+  );
+  assert.equal(migrationEvents.length, 2);
+  assert.equal(migrationEvents.every((row) => row.source === "System"), true);
+  assert.equal(context.migrateOpenFollowUpStatuses().changed, 0);
+
+  const board = context.buildPatientBoardData_();
+  assert.deepEqual(
+    Array.from(board.lanes.map((lane) => lane.status)),
+    ["Open Lead", "Follow Up", "Scheduled", "Case Lost", "Unrelated"],
+  );
+  const snapshot = context.buildDashboardLeadSnapshot_();
+  const openRow = snapshot.find((row) => row[0] === "LEAD-MIGRATE-NONE");
+  const followRow = snapshot.find((row) => row[0] === "LEAD-MIGRATE-DATE");
+  assert.equal(openRow[4], "Open Lead");
+  assert.equal(followRow[4], "Follow Up");
+  assert.equal(openRow[26], true);
+  assert.notEqual(followRow[30], "");
+  harness.assertNoPhi();
+});
+
+test("setup applies audit-safe workflow status validation without rewriting rows", () => {
+  harness.boot();
+  const leads = harness.workbook.getSheetByName("Leads");
+  const activity = harness.workbook.getSheetByName("ActivityLog");
+  const leadMap = harness.headerMap(leads);
+  const activityMap = harness.headerMap(activity);
+  const expected = [
+    "Open Lead",
+    "Follow Up",
+    "Scheduled",
+    "Case Lost",
+    "Unrelated",
+    "Open Lead / Follow Up",
+  ];
+
+  harness.putLead(4, baseLead({
+    lead_id: "LEAD-VALIDATION",
+    status: "Open Lead / Follow Up",
+  }));
+  harness.writeObject(activity, 3, {
+    activity_id: "ACT-VALIDATION",
+    lead_id: "LEAD-VALIDATION",
+    from_status: "Open Lead / Follow Up",
+    to_status: "Follow Up",
+    note: "historical Open Lead / Follow Up event",
+  });
+
+  const beforeLeads = JSON.stringify(
+    leads.getRange(1, 1, leads.getMaxRows(), leads.getLastColumn()).getValues(),
+  );
+  const beforeActivity = JSON.stringify(
+    activity.getRange(1, 1, activity.getMaxRows(), activity.getLastColumn()).getValues(),
+  );
+  const again = context.setupLeadArchiveSchema_();
+
+  assert.equal(again.ok, true);
+  assert.equal(
+    again.warnings.some((warning) => /validation/i.test(warning)),
+    false,
+  );
+  assert.equal(
+    JSON.stringify(
+      leads.getRange(1, 1, leads.getMaxRows(), leads.getLastColumn()).getValues(),
+    ),
+    beforeLeads,
+  );
+  assert.equal(
+    JSON.stringify(
+      activity.getRange(1, 1, activity.getMaxRows(), activity.getLastColumn()).getValues(),
+    ),
+    beforeActivity,
+  );
+
+  function ruleAt(sheet, column, row) {
+    return sheet.getRange(row, column).getDataValidations()[0][0];
+  }
+
+  [
+    [leads, leadMap.status],
+    [activity, activityMap.from_status],
+    [activity, activityMap.to_status],
+  ].forEach(([sheet, column]) => {
+    const rule = ruleAt(sheet, column, 2);
+    assert.deepEqual(rule.values, expected);
+    assert.equal(rule.allowInvalid, false);
+    assert.equal(rule.showDropdown, true);
+    assert.equal(rule.checkbox, false);
+    assert.deepEqual(ruleAt(sheet, column, sheet.getMaxRows()).values, expected);
+    assert.equal(ruleAt(sheet, column, 1), null);
+  });
+
+  assert.equal(harness.leadValue(4, "status"), "Open Lead / Follow Up");
+  assert.equal(
+    activity.getRange(3, activityMap.from_status).getValue(),
+    "Open Lead / Follow Up",
+  );
+  assert.equal(
+    activity.getRange(3, activityMap.to_status).getValue(),
+    "Follow Up",
+  );
   harness.assertNoPhi();
 });

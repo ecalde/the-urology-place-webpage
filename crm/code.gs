@@ -113,6 +113,8 @@ const PATIENT_LEADS_SYSTEM = Object.freeze({
       "archived_by",
       "archived_from_status",
       "archive_reason",
+      "next_follow_up_window_start",
+      "next_follow_up_window_end",
     ],
 
     ActivityLog: [
@@ -172,14 +174,123 @@ const PATIENT_LEADS_SYSTEM = Object.freeze({
 });
 
 
+const LEGACY_OPEN_FOLLOW_UP_STATUS_ =
+  "Open Lead / Follow Up";
+
+
+const WORKFLOW_STATUS_OPEN_LEAD_ =
+  "Open Lead";
+
+
+const WORKFLOW_STATUS_FOLLOW_UP_ =
+  "Follow Up";
+
+
+const ACTIVE_WORKFLOW_STATUSES_ =
+  Object.freeze([
+    WORKFLOW_STATUS_OPEN_LEAD_,
+    WORKFLOW_STATUS_FOLLOW_UP_,
+    "Scheduled",
+    "Case Lost",
+    "Unrelated",
+  ]);
+
+
+/*
+ * Backend sheet validation for stored status
+ * history. The legacy combined status stays
+ * acceptable so old ActivityLog and Leads
+ * values remain valid. Staff workflow
+ * selectors continue to use
+ * ACTIVE_WORKFLOW_STATUSES_ only.
+ */
+const AUDIT_SAFE_WORKFLOW_STATUSES_ =
+  Object.freeze(
+    ACTIVE_WORKFLOW_STATUSES_.concat([
+      LEGACY_OPEN_FOLLOW_UP_STATUS_,
+    ])
+  );
+
+
+const CLOSED_WORKFLOW_STATUSES_ =
+  Object.freeze([
+    "Scheduled",
+    "Case Lost",
+    "Unrelated",
+  ]);
+
+
+/**
+ * Open Lead, Follow Up, and the legacy combined
+ * status are the active open-lead population.
+ * Historical ActivityLog text is not rewritten.
+ */
+function isActiveOpenWorkflowStatus_(status) {
+  const value =
+    String(status || "").trim();
+
+  return (
+    value === WORKFLOW_STATUS_OPEN_LEAD_ ||
+    value === WORKFLOW_STATUS_FOLLOW_UP_ ||
+    value === LEGACY_OPEN_FOLLOW_UP_STATUS_
+  );
+}
+
+
+function isValidFollowUpDate_(value) {
+  return (
+    value instanceof Date &&
+    !isNaN(value.getTime())
+  );
+}
+
+
+/**
+ * Legacy combined status maps to Follow Up only
+ * when next_follow_up_on is a real Date.
+ */
+function legacyOpenFollowUpTargetStatus_(
+  nextFollowUpOn
+) {
+  return isValidFollowUpDate_(nextFollowUpOn)
+    ? WORKFLOW_STATUS_FOLLOW_UP_
+    : WORKFLOW_STATUS_OPEN_LEAD_;
+}
+
+
+function resolveConfiguredDefaultLeadStatus_() {
+  const configured =
+    String(
+      getConfigValue_("default_status") || ""
+    ).trim();
+
+  if (
+    configured ===
+    LEGACY_OPEN_FOLLOW_UP_STATUS_
+  ) {
+    return WORKFLOW_STATUS_OPEN_LEAD_;
+  }
+
+  return configured;
+}
+
+
 const PATIENT_BOARD_LANES =
   Object.freeze([
     {
       key: "open",
       status:
-        "Open Lead / Follow Up",
+        WORKFLOW_STATUS_OPEN_LEAD_,
       title:
-        "Open Lead / Follow Up",
+        WORKFLOW_STATUS_OPEN_LEAD_,
+    },
+
+    {
+      key: "followUp",
+      status:
+        WORKFLOW_STATUS_FOLLOW_UP_,
+      title:
+        WORKFLOW_STATUS_FOLLOW_UP_,
     },
 
     {
@@ -224,8 +335,8 @@ const PATIENT_BOARD_LAYOUT =
     cardRowHeight: 112,
     spacerRowHeight: 11,
 
-    lastBoardColumn: 20,
-    applicationHeaderLastColumn: 24,
+    lastBoardColumn: 25,
+    applicationHeaderLastColumn: 29,
 
     frozenRows: 3,
 
@@ -233,10 +344,11 @@ const PATIENT_BOARD_LAYOUT =
     firstValuesColumn: 2,     // B — dynamic Board values origin
 
     laneStarts: [
-      2,   // B
-      7,   // G
-      12,  // L
-      17,  // Q
+      2,   // B  Open Lead
+      7,   // G  Follow Up
+      12,  // L  Scheduled
+      17,  // Q  Case Lost
+      22,  // V  Unrelated
     ],
 
     laneColumnWidth: 60,
@@ -245,6 +357,7 @@ const PATIENT_BOARD_LAYOUT =
       6,   // F
       11,  // K
       16,  // P
+      21,  // U
     ],
 
     spacerColumnWidth: 14,
@@ -254,7 +367,7 @@ const PATIENT_BOARD_LAYOUT =
     canvasFontColor: "#F3F4F6",
     cardBorderColor: "#303640",
 
-    actionRailFirstColumn: 21,
+    actionRailFirstColumn: 26,
     actionRailColumnCount: 4,
     actionRailColumnWidth: 52,
   });
@@ -284,6 +397,121 @@ function boardDynamicRowCount_(lastPhysicalRow) {
 }
 
 
+function isDefaultSheetBackground_(color) {
+  const value =
+    String(color || "")
+      .trim()
+      .toLowerCase();
+
+  return (
+    value === "" ||
+    value === "#fff" ||
+    value === "#ffffff"
+  );
+}
+
+
+function boardRowHasSurfaceFormatting_(colors) {
+  if (!colors) {
+    return false;
+  }
+
+  for (
+    let index = 0;
+    index < colors.length;
+    index++
+  ) {
+    if (
+      !isDefaultSheetBackground_(
+        colors[index]
+      )
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+/**
+ * Last physical row at or below afterRow that
+ * still has Board surface formatting.
+ *
+ * getLastRow() ignores formatting-only cells.
+ * After the Board widened to five lanes, rows
+ * below the content boundary can still show the
+ * old canvas through column T and the old action
+ * rail on U:X, with Y:AC left white.
+ *
+ * Stop at the first default-white row. Do not
+ * continue to getMaxRows().
+ */
+function boardSurfaceTailLastRow_(
+  sheet,
+  afterRow
+) {
+  const layout =
+    PATIENT_BOARD_LAYOUT;
+
+  const maxRows =
+    sheet.getMaxRows();
+
+  if (afterRow >= maxRows) {
+    return afterRow;
+  }
+
+  const width =
+    layout.applicationHeaderLastColumn -
+    layout.gutterColumn +
+    1;
+
+  const chunkSize = 32;
+  let tailLast = afterRow;
+
+  for (
+    let row = afterRow + 1;
+    row <= maxRows;
+    row += chunkSize
+  ) {
+    const numRows =
+      Math.min(
+        chunkSize,
+        maxRows - row + 1
+      );
+
+    const backgrounds =
+      sheet
+        .getRange(
+          row,
+          layout.gutterColumn,
+          numRows,
+          width
+        )
+        .getBackgrounds();
+
+    for (
+      let index = 0;
+      index < backgrounds.length;
+      index++
+    ) {
+      if (
+        boardRowHasSurfaceFormatting_(
+          backgrounds[index]
+        )
+      ) {
+        tailLast = row + index;
+        continue;
+      }
+
+      return tailLast;
+    }
+  }
+
+  return tailLast;
+}
+
+
 /**
  * First physical column that may receive dynamic
  * Board values. Column A is the logo gutter and
@@ -295,9 +523,9 @@ function boardFirstValuesColumn_() {
 
 
 /**
- * Inclusive B:T width of the dynamic Board values
+ * Inclusive B:Y width of the dynamic Board values
  * rectangle. Does not include gutter A or the
- * U:X action rail.
+ * Z:AC action rail.
  */
 function boardValuesColumnCount_() {
   return (
@@ -1037,7 +1265,7 @@ function initializeLeadRow_(row, options = {}) {
   const actor = getActorIdentity_();
 
   const source = options.source || "Employee";
-  const defaultStatus = getConfigValue_("default_status");
+  const defaultStatus = resolveConfiguredDefaultLeadStatus_();
 
   setCellByHeader_(sheet, row, headerMap, "lead_id", leadId);
 
@@ -1660,34 +1888,11 @@ function recordContactAttempt_(row, data) {
     occurredAt
   );
 
-  // Store latest attempt result.
-  setCellByHeader_(
-    sheet,
-    row,
-    headers,
-    "last_contact_outcome",
-    data.contactOutcome
-  );
-
   /*
-   * Leads.reached_patient means:
-   * "Has this patient ever been successfully reached?"
-   *
-   * Once TRUE, we do not turn it back to FALSE just because
-   * a later attempt receives no answer.
-   *
-   * Individual attempts retain their own TRUE/FALSE state
-   * inside ActivityLog.
+   * New contact attempts do not write
+   * last_contact_outcome or reached_patient.
+   * Those Leads columns stay as historical values.
    */
-  if (data.reachedPatient === true) {
-    setCellByHeader_(
-      sheet,
-      row,
-      headers,
-      "reached_patient",
-      true
-    );
-  }
 
   setCellByHeader_(
     sheet,
@@ -1713,25 +1918,39 @@ function recordContactAttempt_(row, data) {
     actor.email || actor.name || "Employee"
   );
 
-  const activityId = appendActivity_({
-    leadId,
-    occurredAt,
-    activityType: "contact_attempt",
-    actorEmail: actor.email,
-    actorName: actor.name,
-    activitySource: "Employee",
-    attemptNumber: newAttemptNumber,
-    contactMethod: data.contactMethod,
-    contactOutcome: data.contactOutcome,
-    reachedPatient: Boolean(data.reachedPatient),
-    note: data.note || "",
-    systemGenerated: false,
+  const contactMethods = normalizeContactMethods_(data);
+
+  if (!contactMethods.length) {
+    throw new Error(
+      "Select at least one contact method."
+    );
+  }
+
+  const activityIds = [];
+
+  contactMethods.forEach(contactMethod => {
+    activityIds.push(
+      appendActivity_({
+        leadId,
+        occurredAt,
+        activityType: "contact_attempt",
+        actorEmail: actor.email,
+        actorName: actor.name,
+        activitySource: "Employee",
+        attemptNumber: newAttemptNumber,
+        contactMethod,
+        note: data.note || "",
+        systemGenerated: false,
+      })
+    );
   });
 
   return {
     leadId,
-    activityId,
+    activityId: activityIds[0],
+    activityIds,
     attemptNumber: newAttemptNumber,
+    contactMethods,
   };
 }
 
@@ -2359,10 +2578,10 @@ function setFollowUpDateForSelectedLead() {
     .getDisplayValue()
     .trim();
 
-  if (currentStatus !== "Open Lead / Follow Up") {
+  if (!isActiveOpenWorkflowStatus_(currentStatus)) {
     ui.alert(
       "Follow-Up Date Not Available",
-      'Future follow-up dates should currently be set only for leads in "Open Lead / Follow Up".',
+      'Future follow-up dates can be set for "Open Lead" or "Follow Up".',
       ui.ButtonSet.OK
     );
     return;
@@ -2454,10 +2673,10 @@ function clearFollowUpDateForSelectedLead() {
     .getDisplayValue()
     .trim();
 
-  if (currentStatus !== "Open Lead / Follow Up") {
+  if (!isActiveOpenWorkflowStatus_(currentStatus)) {
     ui.alert(
       "Follow-Up Date Not Available",
-      'Future follow-up dates should currently be managed only for leads in "Open Lead / Follow Up".',
+      'Future follow-up dates can be managed for "Open Lead" or "Follow Up".',
       ui.ButtonSet.OK
     );
 
@@ -2503,6 +2722,139 @@ function clearFollowUpDateForSelectedLead() {
     "Follow-Up Date Cleared",
     `The previous follow-up date of ${result.previousDate} was removed.`,
     ui.ButtonSet.OK
+  );
+}
+
+
+/**
+ * Writes one status_change when the status cell
+ * actually changes. Returns false when it does not.
+ */
+function writeLeadStatusChange_(
+  sheet,
+  row,
+  headers,
+  leadId,
+  occurredAt,
+  actor,
+  nextStatus,
+  note,
+  activitySource,
+  systemGenerated
+) {
+  const previousStatus = sheet
+    .getRange(row, headers.status)
+    .getDisplayValue()
+    .trim();
+
+  if (previousStatus === nextStatus) {
+    return false;
+  }
+
+  setCellByHeader_(
+    sheet,
+    row,
+    headers,
+    "status",
+    nextStatus
+  );
+
+  appendActivity_({
+    leadId,
+    occurredAt,
+    activityType: "status_change",
+    actorEmail: actor.email,
+    actorName: actor.name,
+    activitySource: activitySource || "Employee",
+    fieldName: "status",
+    previousValue: previousStatus,
+    newValue: nextStatus,
+    fromStatus: previousStatus,
+    toStatus: nextStatus,
+    note: note || "",
+    systemGenerated: systemGenerated === true,
+  });
+
+  return true;
+}
+
+
+/**
+ * Saving a future follow-up moves Open Lead, or
+ * the legacy combined status, into Follow Up.
+ * A lead already in Follow Up stays there.
+ */
+function applyFollowUpSavedStatus_(
+  sheet,
+  row,
+  headers,
+  leadId,
+  occurredAt,
+  actor
+) {
+  const currentStatus = sheet
+    .getRange(row, headers.status)
+    .getDisplayValue()
+    .trim();
+
+  if (
+    currentStatus !== WORKFLOW_STATUS_OPEN_LEAD_ &&
+    currentStatus !== LEGACY_OPEN_FOLLOW_UP_STATUS_
+  ) {
+    return false;
+  }
+
+  return writeLeadStatusChange_(
+    sheet,
+    row,
+    headers,
+    leadId,
+    occurredAt,
+    actor,
+    WORKFLOW_STATUS_FOLLOW_UP_,
+    "Status set to Follow Up because a future follow-up was saved.",
+    "Employee",
+    false
+  );
+}
+
+
+/**
+ * Clearing a future follow-up returns Follow Up,
+ * or the legacy combined status, to Open Lead.
+ * Every other status is left unchanged.
+ */
+function applyFollowUpClearedStatus_(
+  sheet,
+  row,
+  headers,
+  leadId,
+  occurredAt,
+  actor
+) {
+  const currentStatus = sheet
+    .getRange(row, headers.status)
+    .getDisplayValue()
+    .trim();
+
+  if (
+    currentStatus !== WORKFLOW_STATUS_FOLLOW_UP_ &&
+    currentStatus !== LEGACY_OPEN_FOLLOW_UP_STATUS_
+  ) {
+    return false;
+  }
+
+  return writeLeadStatusChange_(
+    sheet,
+    row,
+    headers,
+    leadId,
+    occurredAt,
+    actor,
+    WORKFLOW_STATUS_OPEN_LEAD_,
+    "Status returned to Open Lead because the future follow-up was cleared.",
+    "Employee",
+    false
   );
 }
 
@@ -2557,34 +2909,96 @@ function setFollowUpDate_(row, data) {
     existingDate instanceof Date &&
     !isNaN(existingDate.getTime());
 
+  const timezone =
+    getConfiguredTimezoneWithFallback_();
+
+  const existingStart =
+    readFollowUpWindowCell_(
+      sheet,
+      row,
+      headers,
+      "next_follow_up_window_start"
+    );
+
+  const existingEnd =
+    readFollowUpWindowCell_(
+      sheet,
+      row,
+      headers,
+      "next_follow_up_window_end"
+    );
+
+  const nextWindows =
+    resolveFollowUpWindows_(
+      data,
+      existingStart,
+      existingEnd,
+      data.followUpDate,
+      timezone
+    );
+
+  assertFollowUpWindowColumns_(
+    headers,
+    nextWindows.start,
+    nextWindows.end
+  );
+
   const previousDateText =
     hadExistingDate
-      ? formatDateForAudit_(existingDate)
+      ? formatFollowUpAuditValue_(
+          existingDate,
+          existingStart,
+          existingEnd,
+          timezone
+        )
       : "";
 
   const newDateText =
-    formatDateForAudit_(data.followUpDate);
+    formatFollowUpAuditValue_(
+      data.followUpDate,
+      nextWindows.start,
+      nextWindows.end,
+      timezone
+    );
 
   if (
     hadExistingDate &&
     previousDateText === newDateText
   ) {
+    const statusMoved =
+      applyFollowUpSavedStatus_(
+        sheet,
+        row,
+        headers,
+        leadId,
+        occurredAt,
+        actor
+      );
+
+    if (statusMoved) {
+      updateLeadAuditMetadata_(
+        sheet,
+        row,
+        headers,
+        occurredAt,
+        recordedNow,
+        actor
+      );
+    }
+
     return {
       leadId,
       followUpDate: existingDate,
-      changed: false,
+      changed: statusMoved,
     };
   }
 
   followUpCell.setValue(data.followUpDate);
-
-  // A lead with a future follow-up remains active.
-  setCellByHeader_(
+  persistFollowUpWindows_(
     sheet,
     row,
     headers,
-    "workflow_complete",
-    false
+    nextWindows
   );
 
   setCellByHeader_(
@@ -2616,6 +3030,15 @@ function setFollowUpDate_(row, data) {
 
     systemGenerated: false,
   });
+
+  applyFollowUpSavedStatus_(
+    sheet,
+    row,
+    headers,
+    leadId,
+    occurredAt,
+    actor
+  );
 
   updateLeadAuditMetadata_(
     sheet,
@@ -2672,8 +3095,32 @@ function clearFollowUpDate_(row, data = {}) {
     );
   }
 
+  const timezone =
+    getConfiguredTimezoneWithFallback_();
+
+  const existingStart =
+    readFollowUpWindowCell_(
+      sheet,
+      row,
+      headers,
+      "next_follow_up_window_start"
+    );
+
+  const existingEnd =
+    readFollowUpWindowCell_(
+      sheet,
+      row,
+      headers,
+      "next_follow_up_window_end"
+    );
+
   const previousDateText =
-    formatDateForAudit_(existingDate);
+    formatFollowUpAuditValue_(
+      existingDate,
+      existingStart,
+      existingEnd,
+      timezone
+    );
 
   const actor = getActorIdentity_();
   const recordedNow = new Date();
@@ -2684,6 +3131,11 @@ function clearFollowUpDate_(row, data = {}) {
       : recordedNow;
 
   followUpCell.clearContent();
+  clearFollowUpWindowCells_(
+    sheet,
+    row,
+    headers
+  );
 
   appendActivity_({
     leadId,
@@ -2702,6 +3154,15 @@ function clearFollowUpDate_(row, data = {}) {
 
     systemGenerated: false,
   });
+
+  applyFollowUpClearedStatus_(
+    sheet,
+    row,
+    headers,
+    leadId,
+    occurredAt,
+    actor
+  );
 
   updateLeadAuditMetadata_(
     sheet,
@@ -2811,9 +3272,8 @@ function moveSelectedLeadToCaseLost() {
   const context = getSelectedInitializedLead_();
   const { ss, row, ui } = context;
 
-  const reasons = getListValues_(
-    ss.getSheetByName("Lists"),
-    "G2:G9"
+  const reasons = getCaseLostReasonOptions_(
+    ss.getSheetByName("Lists")
   );
 
   const reasonResponse = ui.prompt(
@@ -3432,13 +3892,47 @@ function clearFutureFollowUpForWorkflowMove_(
     !isNaN(existingDate.getTime());
 
   if (!hasFollowUp) {
+    clearFollowUpWindowCells_(
+      sheet,
+      row,
+      headers
+    );
     return false;
   }
 
+  const timezone =
+    getConfiguredTimezoneWithFallback_();
+
+  const existingStart =
+    readFollowUpWindowCell_(
+      sheet,
+      row,
+      headers,
+      "next_follow_up_window_start"
+    );
+
+  const existingEnd =
+    readFollowUpWindowCell_(
+      sheet,
+      row,
+      headers,
+      "next_follow_up_window_end"
+    );
+
   const previousDate =
-    formatDateForAudit_(existingDate);
+    formatFollowUpAuditValue_(
+      existingDate,
+      existingStart,
+      existingEnd,
+      timezone
+    );
 
   followUpCell.clearContent();
+  clearFollowUpWindowCells_(
+    sheet,
+    row,
+    headers
+  );
 
   appendActivity_({
     leadId,
@@ -7700,7 +8194,7 @@ function assignLead_(
 /**
  * PHASE 2J-B
  * Moves a Scheduled, Case Lost, or Unrelated
- * lead back to Open Lead / Follow Up.
+ * lead back to Open Lead.
  */
 function moveSelectedLeadToOpenFollowUp() {
   const context =
@@ -7724,11 +8218,11 @@ function moveSelectedLeadToOpenFollowUp() {
 
   if (
     currentStatus ===
-    "Open Lead / Follow Up"
+    WORKFLOW_STATUS_OPEN_LEAD_
   ) {
     ui.alert(
       "Already Open",
-      'This lead is already in "Open Lead / Follow Up".',
+      'This lead is already in "Open Lead".',
       ui.ButtonSet.OK
     );
     return;
@@ -7747,7 +8241,7 @@ function moveSelectedLeadToOpenFollowUp() {
   ) {
     ui.alert(
       "Cannot Reopen",
-      `Status "${currentStatus}" cannot currently be moved back to Open Lead / Follow Up.`,
+      `Status "${currentStatus}" cannot currently be moved back to Open Lead.`,
       ui.ButtonSet.OK
     );
     return;
@@ -7755,7 +8249,7 @@ function moveSelectedLeadToOpenFollowUp() {
 
   const noteResponse = ui.prompt(
     "Reopen Lead",
-    `This will move the lead from "${currentStatus}" back to "Open Lead / Follow Up".\n\nEnter a reason for reopening the lead.`,
+    `This will move the lead from "${currentStatus}" back to "Open Lead".\n\nEnter a reason for reopening the lead.`,
     ui.ButtonSet.OK_CANCEL
   );
 
@@ -7788,6 +8282,8 @@ function moveSelectedLeadToOpenFollowUp() {
         row,
         {
           note,
+          targetStatus:
+            WORKFLOW_STATUS_OPEN_LEAD_,
           occurredAt:
             new Date(),
         }
@@ -7803,7 +8299,7 @@ function moveSelectedLeadToOpenFollowUp() {
 
   ui.alert(
     "Lead Reopened",
-    `Lead moved from ${result.previousStatus} to Open Lead / Follow Up.`,
+    `Lead moved from ${result.previousStatus} to ${result.status}.`,
     ui.ButtonSet.OK
   );
 }
@@ -8329,23 +8825,18 @@ function buildBoardQuickActionData_(
       true,
 
 
-    /*
-     * Completed workflows cannot receive new
-     * contact attempts.
-     */
     canRecordContactAttempt:
-      !workflowComplete,
+      true,
 
 
     /*
-     * Follow-up controls are only applicable while
-     * actively working the Open lane.
+     * Follow-up controls stay available for the
+     * Open lane. Legacy workflow_complete does
+     * not block them.
      */
     canManageFollowUp:
-      (
-        status ===
-          "Open Lead / Follow Up" &&
-        !workflowComplete
+      isActiveOpenWorkflowStatus_(
+        status
       ),
 
 
@@ -8732,8 +9223,17 @@ function buildBoardMoveData_(
       ),
 
     lostReason:
-      readText(
-        "lost_reason"
+      formatLostReasonsForDisplay_(
+        readText(
+          "lost_reason"
+        )
+      ),
+
+    lostReasons:
+      parseLostReasons_(
+        readText(
+          "lost_reason"
+        )
       ),
 
     unrelatedType:
@@ -9867,7 +10367,8 @@ function boardMoveLead(
 
 
   const allowedTargets = [
-    "Open Lead / Follow Up",
+    WORKFLOW_STATUS_OPEN_LEAD_,
+    WORKFLOW_STATUS_FOLLOW_UP_,
     "Scheduled",
     "Case Lost",
     "Unrelated",
@@ -9927,6 +10428,11 @@ function boardMoveLead(
             String(
               data.reason || ""
             ).trim(),
+
+          reasons:
+            Array.isArray(data.reasons)
+              ? data.reasons
+              : undefined,
 
           unrelatedType:
             String(
@@ -10115,13 +10621,33 @@ function buildPatientDetailCoreData_(
         ),
 
       nextFollowUpOn:
-        formatDateForAudit_(
-          nextFollowUpOn
+        formatFollowUpAuditValue_(
+          nextFollowUpOn,
+          getValue(
+            "next_follow_up_window_start"
+          ),
+          getValue(
+            "next_follow_up_window_end"
+          )
         ),
 
       nextFollowUpInput:
         formatDateForHtmlInput_(
           nextFollowUpOn
+        ),
+
+      nextFollowUpWindowStartInput:
+        formatHtmlTimeFromValue_(
+          getValue(
+            "next_follow_up_window_start"
+          )
+        ),
+
+      nextFollowUpWindowEndInput:
+        formatHtmlTimeFromValue_(
+          getValue(
+            "next_follow_up_window_end"
+          )
         ),
 
       scheduledDate:
@@ -10164,7 +10690,14 @@ function buildPatientDetailCoreData_(
         getDisplay("completed_by"),
 
       lostReason:
-        getDisplay("lost_reason"),
+        formatLostReasonsForDisplay_(
+          getDisplay("lost_reason")
+        ),
+
+      lostReasons:
+        parseLostReasons_(
+          getDisplay("lost_reason")
+        ),
 
       unrelatedType:
         getDisplay("unrelated_type"),
@@ -12202,7 +12735,19 @@ function moveLeadToOpenFollowUp_(
   assertOperationalLeadById_(leadId);
 
   const targetStatus =
-    "Open Lead / Follow Up";
+    String(
+      data.targetStatus ||
+      WORKFLOW_STATUS_OPEN_LEAD_
+    ).trim();
+
+  if (
+    targetStatus !== WORKFLOW_STATUS_OPEN_LEAD_ &&
+    targetStatus !== WORKFLOW_STATUS_FOLLOW_UP_
+  ) {
+    throw new Error(
+      "Select Open Lead or Follow Up."
+    );
+  }
 
   const previousStatus =
     sheet
@@ -12225,7 +12770,7 @@ function moveLeadToOpenFollowUp_(
     )
   ) {
     throw new Error(
-      `Status "${previousStatus}" cannot be reopened to Open Lead / Follow Up.`
+      `Status "${previousStatus}" cannot be reopened to ${targetStatus}.`
     );
   }
 
@@ -12486,11 +13031,140 @@ function moveLeadToOpenFollowUp_(
 
 
 /**
- * Clears workflow completion metadata when a
- * completed card is moved into another workflow.
+ * Manual move between Open Lead and Follow Up.
  *
- * If the lead was not complete, this safely
- * does nothing.
+ * A callback date stays optional. Patient history,
+ * follow-up fields, and ActivityLog rows are kept.
+ */
+function moveLeadBetweenOpenAndFollowUp_(
+  row,
+  data = {}
+) {
+  const ss =
+    SpreadsheetApp.getActiveSpreadsheet();
+
+  const sheet =
+    ss.getSheetByName("Leads");
+
+  if (!sheet) {
+    throw new Error(
+      "Leads worksheet was not found."
+    );
+  }
+
+  const headers =
+    getHeaderMap_("Leads");
+
+  const leadId =
+    sheet
+      .getRange(
+        row,
+        headers.lead_id
+      )
+      .getDisplayValue()
+      .trim();
+
+  if (!leadId) {
+    throw new Error(
+      `Lead row ${row} does not contain a lead_id.`
+    );
+  }
+
+  assertOperationalLeadById_(leadId);
+
+  const targetStatus =
+    String(
+      data.targetStatus || ""
+    ).trim();
+
+  if (
+    targetStatus !== WORKFLOW_STATUS_OPEN_LEAD_ &&
+    targetStatus !== WORKFLOW_STATUS_FOLLOW_UP_
+  ) {
+    throw new Error(
+      "Select Open Lead or Follow Up."
+    );
+  }
+
+  const previousStatus =
+    sheet
+      .getRange(
+        row,
+        headers.status
+      )
+      .getDisplayValue()
+      .trim();
+
+  if (
+    !isActiveOpenWorkflowStatus_(
+      previousStatus
+    )
+  ) {
+    throw new Error(
+      `Status "${previousStatus}" cannot be moved to ${targetStatus} without the closed-lane workflow.`
+    );
+  }
+
+  if (previousStatus === targetStatus) {
+    return {
+      leadId,
+      previousStatus,
+      status: targetStatus,
+      changed: false,
+    };
+  }
+
+  const actor =
+    getActorIdentity_();
+
+  const recordedNow =
+    new Date();
+
+  const occurredAt =
+    data.occurredAt instanceof Date
+      ? data.occurredAt
+      : recordedNow;
+
+  const changed =
+    writeLeadStatusChange_(
+      sheet,
+      row,
+      headers,
+      leadId,
+      occurredAt,
+      actor,
+      targetStatus,
+      String(data.note || "").trim(),
+      "Employee",
+      false
+    );
+
+  if (changed) {
+    updateLeadAuditMetadata_(
+      sheet,
+      row,
+      headers,
+      occurredAt,
+      recordedNow,
+      actor
+    );
+  }
+
+  return {
+    leadId,
+    previousStatus,
+    status: targetStatus,
+    changed,
+  };
+}
+
+
+/**
+ * Clears nothing.
+ *
+ * workflow_complete, completed_at, and completed_by
+ * are legacy. Status changes keep those historical
+ * values and do not write workflow_reopened.
  */
 function resetCompletionForStatusMove_(
   sheet,
@@ -12503,136 +13177,9 @@ function resetCompletionForStatusMove_(
   toStatus,
   note
 ) {
-  const workflowComplete =
-    Boolean(
-      sheet
-        .getRange(
-          row,
-          headers.workflow_complete
-        )
-        .getValue()
-    );
-
-  const completedAtCell =
-    sheet.getRange(
-      row,
-      headers.completed_at
-    );
-
-  const completedByCell =
-    sheet.getRange(
-      row,
-      headers.completed_by
-    );
-
-  const previousCompletedAt =
-    completedAtCell.getValue();
-
-  const previousCompletedBy =
-    completedByCell
-      .getDisplayValue()
-      .trim();
-
-  /*
-   * Always clean stale completion metadata if
-   * any exists.
-   */
-  setCellByHeader_(
-    sheet,
-    row,
-    headers,
-    "workflow_complete",
-    false
-  );
-
-  completedAtCell.clearContent();
-  completedByCell.clearContent();
-
-  /*
-   * Only create workflow_reopened when the
-   * workflow genuinely was complete.
-   */
-  if (!workflowComplete) {
-    return false;
-  }
-
-  let auditNote =
-    note || "";
-
-  const completedAtText =
-    previousCompletedAt instanceof Date &&
-    !isNaN(
-      previousCompletedAt.getTime()
-    )
-      ? Utilities.formatDate(
-          previousCompletedAt,
-          getConfiguredTimezoneWithFallback_(),
-          "MM/dd/yyyy h:mm a"
-        )
-      : "";
-
-  if (
-    completedAtText ||
-    previousCompletedBy
-  ) {
-    const metadata =
-      "Previously completed" +
-      (
-        completedAtText
-          ? ` at ${completedAtText}`
-          : ""
-      ) +
-      (
-        previousCompletedBy
-          ? ` by ${previousCompletedBy}`
-          : ""
-      ) +
-      ".";
-
-    auditNote =
-      auditNote
-        ? `${auditNote} ${metadata}`
-        : metadata;
-  }
-
-  appendActivity_({
-    leadId,
-    occurredAt,
-
-    activityType:
-      "workflow_reopened",
-
-    actorEmail:
-      actor.email,
-
-    actorName:
-      actor.name,
-
-    activitySource:
-      "Employee",
-
-    fieldName:
-      "workflow_complete",
-
-    previousValue:
-      "TRUE",
-
-    newValue:
-      "FALSE",
-
-    fromStatus,
-
-    toStatus,
-
-    note:
-      auditNote,
-
-    systemGenerated:
-      false,
-  });
-
-  return true;
+  return false;
 }
+
 
 /**
  * PHASE 3C-A
@@ -12685,9 +13232,11 @@ function buildPatientDetailActionOptions_() {
       ),
 
     caseLostReasons:
-      getListValues_(
-        listsSheet,
-        "G2:G9"
+      normalizeCaseLostReasonOptions_(
+        getListValues_(
+          listsSheet,
+          "G2:G9"
+        )
       ),
 
     unrelatedTypes:
@@ -12852,13 +13401,33 @@ function buildPatientDetailCoreRefreshData_(
       ),
 
     nextFollowUpOn:
-      formatDateForAudit_(
-        nextFollowUpOn
+      formatFollowUpAuditValue_(
+        nextFollowUpOn,
+        context.getValue(
+          "next_follow_up_window_start"
+        ),
+        context.getValue(
+          "next_follow_up_window_end"
+        )
       ),
 
     nextFollowUpInput:
       formatDateForHtmlInput_(
         nextFollowUpOn
+      ),
+
+    nextFollowUpWindowStartInput:
+      formatHtmlTimeFromValue_(
+        context.getValue(
+          "next_follow_up_window_start"
+        )
+      ),
+
+    nextFollowUpWindowEndInput:
+      formatHtmlTimeFromValue_(
+        context.getValue(
+          "next_follow_up_window_end"
+        )
       ),
 
     scheduledDate:
@@ -12894,8 +13463,17 @@ function buildPatientDetailCoreRefreshData_(
       ),
 
     lostReason:
-      context.getDisplay(
-        "lost_reason"
+      formatLostReasonsForDisplay_(
+        context.getDisplay(
+          "lost_reason"
+        )
+      ),
+
+    lostReasons:
+      parseLostReasons_(
+        context.getDisplay(
+          "lost_reason"
+        )
       ),
 
     unrelatedType:
@@ -13128,34 +13706,6 @@ function patientDetailRecordContactAttempt(
   const ss =
     SpreadsheetApp.getActiveSpreadsheet();
 
-  const leadsSheet =
-    ss.getSheetByName("Leads");
-
-  if (!leadsSheet) {
-    throw new Error(
-      "Leads worksheet was not found."
-    );
-  }
-
-  const headers =
-    getHeaderMap_("Leads");
-
-  const workflowComplete =
-    Boolean(
-      leadsSheet
-        .getRange(
-          row,
-          headers.workflow_complete
-        )
-        .getValue()
-    );
-
-  if (workflowComplete) {
-    throw new Error(
-      "This workflow is complete. Reopen the workflow before recording another contact attempt."
-    );
-  }
-
   const listsSheet =
     ss.getSheetByName("Lists");
 
@@ -13165,74 +13715,49 @@ function patientDetailRecordContactAttempt(
     );
   }
 
-  const contactMethod =
-    String(
-      data.contactMethod || ""
-    ).trim();
-
-  const contactOutcome =
-    String(
-      data.contactOutcome || ""
-    ).trim();
-
-  const reachedPatient =
-    data.reachedPatient === true;
-
   const note =
     String(
       data.note || ""
     ).trim();
 
-
-  /*
-   * Validate again on the server.
-   *
-   * The HTML dropdown is convenient for employees,
-   * but client-side values must not be trusted as
-   * the only validation boundary.
-   */
   const allowedMethods =
     getListValues_(
       listsSheet,
       "L2:L5"
     );
 
-  const allowedOutcomes =
-    getListValues_(
-      listsSheet,
-      "C2:C10"
+  const requestedMethods =
+    normalizeContactMethods_(data);
+
+  const unknownMethod =
+    requestedMethods.find(
+      method =>
+        allowedMethods.indexOf(method) < 0
     );
 
-
-  if (
-    !allowedMethods.includes(
-      contactMethod
-    )
-  ) {
+  if (unknownMethod) {
     throw new Error(
-      `Invalid contact method: ${contactMethod || "(blank)"}`
+      `Invalid contact method: ${unknownMethod}`
     );
   }
 
+  const contactMethods =
+    allowedMethods.filter(
+      method =>
+        requestedMethods.indexOf(method) >= 0
+    );
 
-  if (
-    !allowedOutcomes.includes(
-      contactOutcome
-    )
-  ) {
+  if (!contactMethods.length) {
     throw new Error(
-      `Invalid contact outcome: ${contactOutcome || "(blank)"}`
+      "Select at least one contact method."
     );
   }
-
 
   const result =
     recordContactAttempt_(
       row,
       {
-        contactMethod,
-        contactOutcome,
-        reachedPatient,
+        contactMethods,
         note,
         occurredAt:
           new Date(),
@@ -13447,27 +13972,12 @@ function patientDetailSetFollowUpDate(
       .trim();
 
   if (
-    status !==
-    "Open Lead / Follow Up"
+    !isActiveOpenWorkflowStatus_(
+      status
+    )
   ) {
     throw new Error(
-      'Future follow-up dates can only be managed while the lead is in "Open Lead / Follow Up".'
-    );
-  }
-
-  const workflowComplete =
-    Boolean(
-      sheet
-        .getRange(
-          row,
-          headers.workflow_complete
-        )
-        .getValue()
-    );
-
-  if (workflowComplete) {
-    throw new Error(
-      "This workflow is complete. Reopen the workflow before setting a follow-up date."
+      'Future follow-up dates can only be managed while the lead is in "Open Lead" or "Follow Up".'
     );
   }
 
@@ -13493,12 +14003,84 @@ function patientDetailSetFollowUpDate(
       data.note || ""
     ).trim();
 
+  const windowProvided =
+    Object.prototype.hasOwnProperty.call(
+      data,
+      "windowStartText"
+    ) ||
+    Object.prototype.hasOwnProperty.call(
+      data,
+      "windowEndText"
+    );
+
+  const startMinutes =
+    windowProvided
+      ? parseHtmlTimeMinutes_(
+          data.windowStartText,
+          "Callback start time"
+        )
+      : null;
+
+  const endMinutes =
+    windowProvided
+      ? parseHtmlTimeMinutes_(
+          data.windowEndText,
+          "Callback end time"
+        )
+      : null;
+
+  if (
+    windowProvided &&
+    endMinutes != null &&
+    startMinutes == null
+  ) {
+    throw new Error(
+      "Enter a callback start time before an end time."
+    );
+  }
+
+  if (
+    windowProvided &&
+    startMinutes != null &&
+    endMinutes != null &&
+    endMinutes <= startMinutes
+  ) {
+    throw new Error(
+      "Callback end time must be after the start time."
+    );
+  }
+
+  const timezone =
+    getConfiguredTimezoneWithFallback_();
+
+  const dateKey =
+    formatDateForHtmlInput_(
+      followUpDate
+    );
+
   const result =
     setFollowUpDate_(
       row,
       {
         followUpDate,
         note,
+        windowProvided,
+        windowStart:
+          startMinutes == null
+            ? null
+            : clinicDateTimeFromMinutes_(
+                dateKey,
+                startMinutes,
+                timezone
+              ),
+        windowEnd:
+          endMinutes == null
+            ? null
+            : clinicDateTimeFromMinutes_(
+                dateKey,
+                endMinutes,
+                timezone
+              ),
         occurredAt:
           new Date(),
       }
@@ -13574,27 +14156,12 @@ function patientDetailClearFollowUpDate(
       .trim();
 
   if (
-    status !==
-    "Open Lead / Follow Up"
+    !isActiveOpenWorkflowStatus_(
+      status
+    )
   ) {
     throw new Error(
-      'Future follow-up dates can only be managed while the lead is in "Open Lead / Follow Up".'
-    );
-  }
-
-  const workflowComplete =
-    Boolean(
-      sheet
-        .getRange(
-          row,
-          headers.workflow_complete
-        )
-        .getValue()
-    );
-
-  if (workflowComplete) {
-    throw new Error(
-      "This workflow is complete. Reopen the workflow before clearing a follow-up date."
+      'Future follow-up dates can only be managed while the lead is in "Open Lead" or "Follow Up".'
     );
   }
 
@@ -13731,7 +14298,8 @@ function patientDetailMoveWorkflow(
 
 
   const allowedTargets = [
-    "Open Lead / Follow Up",
+    WORKFLOW_STATUS_OPEN_LEAD_,
+    WORKFLOW_STATUS_FOLLOW_UP_,
     "Case Lost",
     "Unrelated",
   ];
@@ -13751,18 +14319,18 @@ function patientDetailMoveWorkflow(
    * OPEN LEAD / FOLLOW UP
    */
   if (
-    targetStatus ===
-    "Open Lead / Follow Up"
+    targetStatus === WORKFLOW_STATUS_OPEN_LEAD_ ||
+    targetStatus === WORKFLOW_STATUS_FOLLOW_UP_
   ) {
     if (
       currentStatus ===
-      "Open Lead / Follow Up"
+      targetStatus
     ) {
       return attachLeadViewInvalidation_({
 
         changed: false,
         message:
-          'This lead is already in "Open Lead / Follow Up".',
+          `This lead is already in "${targetStatus}".`,
         refresh:
           buildPatientDetailCoreRefreshData_(
             leadId
@@ -13772,25 +14340,56 @@ function patientDetailMoveWorkflow(
         );
     }
 
-    if (!note) {
+    const fromClosedLane =
+      CLOSED_WORKFLOW_STATUSES_.indexOf(
+        currentStatus
+      ) >= 0;
+
+    if (fromClosedLane && !note) {
       throw new Error(
-        "Enter a reason for moving this lead back to Open Lead / Follow Up."
+        `Enter a reason for moving this lead back to ${targetStatus}.`
       );
     }
 
     const result =
-      moveLeadToOpenFollowUp_(
-        row,
-        {
-          note,
-          occurredAt:
-            new Date(),
-        }
-      );
+      fromClosedLane
+        ? moveLeadToOpenFollowUp_(
+            row,
+            {
+              note,
+              targetStatus,
+              occurredAt:
+                new Date(),
+            }
+          )
+        : moveLeadBetweenOpenAndFollowUp_(
+            row,
+            {
+              note,
+              targetStatus,
+              occurredAt:
+                new Date(),
+            }
+          );
 
     invalidateLeadRowSnapshot_(
       leadId
     );
+
+    if (result.changed === false) {
+      return attachLeadViewInvalidation_({
+
+        changed: false,
+        message:
+          `This lead is already in "${targetStatus}".`,
+        refresh:
+          buildPatientDetailCoreRefreshData_(
+            leadId
+          ),
+        },
+          LEAD_VIEW_INVALIDATION_.workflow
+        );
+    }
 
 
     return attachLeadViewInvalidation_({
@@ -13798,7 +14397,7 @@ function patientDetailMoveWorkflow(
       changed: true,
 
       message:
-        `Lead moved from ${result.previousStatus} to Open Lead / Follow Up.`,
+        `Lead moved from ${result.previousStatus} to ${result.status}.`,
 
       refresh:
         buildPatientDetailCoreRefreshData_(
@@ -13817,39 +14416,33 @@ function patientDetailMoveWorkflow(
     targetStatus ===
     "Case Lost"
   ) {
-    const allowedReasons =
-      getListValues_(
+    const serializedReason =
+      resolveLostReasonSelection_(
         listsSheet,
-        "G2:G9"
+        data
       );
-
-    if (
-      !allowedReasons.includes(
-        reason
-      )
-    ) {
-      throw new Error(
-        `Invalid Case Lost reason: ${reason || "(blank)"}`
-      );
-    }
 
     const currentReason =
-      context.getDisplay(
-        "lost_reason"
+      serializeLostReasons_(
+        parseLostReasons_(
+          context.getDisplay(
+            "lost_reason"
+          )
+        )
       );
 
     if (
       currentStatus ===
         "Case Lost" &&
       currentReason ===
-        reason
+        serializedReason
     ) {
       return attachLeadViewInvalidation_({
 
         changed: false,
 
         message:
-          `This lead is already Case Lost with reason "${reason}".`,
+          `This lead is already Case Lost with reason "${formatLostReasonsForDisplay_(serializedReason)}".`,
 
         refresh:
           buildPatientDetailCoreRefreshData_(
@@ -13864,7 +14457,7 @@ function patientDetailMoveWorkflow(
       moveLeadToCaseLost_(
         row,
         {
-          reason,
+          reason: serializedReason,
           note,
           occurredAt:
             new Date(),
@@ -13883,8 +14476,8 @@ function patientDetailMoveWorkflow(
       message:
         currentStatus ===
         "Case Lost"
-          ? `Case Lost reason changed to ${result.reason}.`
-          : `Lead moved to Case Lost. Reason: ${result.reason}.`,
+          ? `Case Lost reason changed to ${formatLostReasonsForDisplay_(result.reason)}.`
+          : `Lead moved to Case Lost. Reason: ${formatLostReasonsForDisplay_(result.reason)}.`,
 
       refresh:
         buildPatientDetailCoreRefreshData_(
@@ -14713,51 +15306,685 @@ function getBoardDateKey_(
 }
 
 
-function buildBoardFollowUpState_(
-  nextFollowUpOn,
-  timezone,
-  todayKey
-) {
-  const followUpKey =
-    getBoardDateKey_(
-      nextFollowUpOn,
-      timezone
-    );
+const LOST_REASON_DELIMITER_ = " | ";
 
-  if (!followUpKey) {
+
+const LEAD_CALLBACK_HEADER_NAMES_ = Object.freeze([
+  "next_follow_up_window_start",
+  "next_follow_up_window_end",
+]);
+
+
+const SCHEDULED_AUTO_ARCHIVE_CONFIG_ =
+  "scheduled_auto_archive_days";
+
+
+const SCHEDULED_AUTO_ARCHIVE_HANDLER_ =
+  "archiveEligibleScheduledLeadsDaily";
+
+
+function parseLostReasons_(value) {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return [];
+  }
+
+  if (text.indexOf(LOST_REASON_DELIMITER_) === -1) {
+    return [text];
+  }
+
+  return text
+    .split(LOST_REASON_DELIMITER_)
+    .map(reason => reason.trim())
+    .filter(Boolean);
+}
+
+
+function serializeLostReasons_(reasons) {
+  const unique = [];
+
+  (reasons || []).forEach(reason => {
+    const text = String(reason || "").trim();
+
+    if (!text || unique.indexOf(text) >= 0) {
+      return;
+    }
+
+    if (text.indexOf("|") >= 0) {
+      throw new Error(
+        "A Case Lost reason cannot contain |."
+      );
+    }
+
+    unique.push(text);
+  });
+
+  return unique.join(LOST_REASON_DELIMITER_);
+}
+
+
+function formatLostReasonsForDisplay_(value) {
+  return parseLostReasons_(value).join(", ");
+}
+
+
+function isCombinedInsuranceCostLabel_(value) {
+  return /^(?:insurance\s*\/\s*cost|cost\s*\/\s*insurance)$/i
+    .test(String(value || "").trim());
+}
+
+
+function lostReasonChoiceKey_(value) {
+  const text = String(value || "").trim();
+  const lower = text.toLowerCase();
+
+  if (lower === "insurance" || lower === "cost") {
+    return lower;
+  }
+
+  return text;
+}
+
+
+function normalizeCaseLostReasonOptions_(values) {
+  const result = [];
+  const seen = {};
+
+  (values || []).forEach(value => {
+    const text = String(value || "").trim();
+
+    if (!text) {
+      return;
+    }
+
+    const pieces = isCombinedInsuranceCostLabel_(text)
+      ? ["Insurance", "Cost"]
+      : [text];
+
+    pieces.forEach(piece => {
+      const key = lostReasonChoiceKey_(piece);
+
+      if (!key || seen[key]) {
+        return;
+      }
+
+      seen[key] = true;
+      result.push(piece);
+    });
+  });
+
+  return result;
+}
+
+
+function getCaseLostReasonOptions_(listsSheet) {
+  return normalizeCaseLostReasonOptions_(
+    getListValues_(
+      listsSheet,
+      "G2:G9"
+    )
+  );
+}
+
+
+function orderLostReasons_(selected, options) {
+  const wanted = {};
+
+  (selected || []).forEach(reason => {
+    const text = String(reason || "").trim();
+
+    if (text) {
+      wanted[text] = true;
+    }
+  });
+
+  return (options || []).filter(
+    option => wanted[option]
+  );
+}
+
+
+function resolveLostReasonSelection_(listsSheet, data) {
+  const options = getCaseLostReasonOptions_(listsSheet);
+  const source = data || {};
+  let selected = [];
+
+  if (Array.isArray(source.reasons)) {
+    selected = source.reasons;
+  } else if (source.reason) {
+    selected = parseLostReasons_(source.reason);
+  }
+
+  const unknown = [];
+
+  selected.forEach(reason => {
+    const text = String(reason || "").trim();
+
+    if (text && options.indexOf(text) < 0) {
+      unknown.push(text);
+    }
+  });
+
+  if (unknown.length) {
+    throw new Error(
+      `Invalid Case Lost reason: ${unknown[0]}`
+    );
+  }
+
+  const ordered = orderLostReasons_(
+    selected,
+    options
+  );
+
+  if (!ordered.length) {
+    throw new Error(
+      "Select a Case Lost reason."
+    );
+  }
+
+  return serializeLostReasons_(ordered);
+}
+
+
+function normalizeContactMethods_(data) {
+  const source = data || {};
+  const values = Array.isArray(source.contactMethods)
+    ? source.contactMethods
+    : (
+        source.contactMethod
+          ? [source.contactMethod]
+          : []
+      );
+  const unique = [];
+
+  values.forEach(value => {
+    const text = String(value || "").trim();
+
+    if (text && unique.indexOf(text) < 0) {
+      unique.push(text);
+    }
+  });
+
+  return unique;
+}
+
+
+function addCalendarDaysToDateKey_(dateKey, days) {
+  const parts = String(dateKey || "").split("-");
+
+  if (parts.length !== 3) {
+    return "";
+  }
+
+  const utc = Date.UTC(
+    Number(parts[0]),
+    Number(parts[1]) - 1,
+    Number(parts[2])
+  );
+  const next = new Date(utc + days * 86400000);
+  const month = String(next.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(next.getUTCDate()).padStart(2, "0");
+
+  return `${next.getUTCFullYear()}-${month}-${day}`;
+}
+
+
+function readClockMinutes_(value, timezone) {
+  if (value == null || value === "") {
+    return null;
+  }
+
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    const text = Utilities.formatDate(
+      value,
+      timezone || getConfiguredTimezoneWithFallback_(),
+      "HH:mm"
+    );
+    return readClockMinutes_(text, timezone);
+  }
+
+  const match = /^(\d{1,2}):(\d{2})$/.exec(
+    String(value).trim()
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+
+  if (hours > 23 || minutes > 59) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+
+function formatHtmlTimeFromMinutes_(minutes) {
+  if (minutes == null) {
+    return "";
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+
+
+function formatHtmlTimeFromValue_(value, timezone) {
+  return formatHtmlTimeFromMinutes_(
+    readClockMinutes_(
+      value,
+      timezone || getConfiguredTimezoneWithFallback_()
+    )
+  );
+}
+
+
+function formatMinutesForBoard_(minutes) {
+  if (minutes == null) {
+    return "";
+  }
+
+  let hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const suffix = hours >= 12 ? "PM" : "AM";
+
+  hours = hours % 12;
+
+  if (hours === 0) {
+    hours = 12;
+  }
+
+  return `${hours}:${String(mins).padStart(2, "0")} ${suffix}`;
+}
+
+
+function formatBoardCallbackLabel_(
+  dateText,
+  startMinutes,
+  endMinutes
+) {
+  if (!dateText) {
+    return "";
+  }
+
+  const startText = formatMinutesForBoard_(startMinutes);
+  const endText = formatMinutesForBoard_(endMinutes);
+
+  if (startText && endText) {
+    return `Follow-up: ${dateText} ${startText}–${endText}`;
+  }
+
+  if (startText) {
+    return `Follow-up: ${dateText} ${startText}`;
+  }
+
+  if (endText) {
+    return `Follow-up: ${dateText} until ${endText}`;
+  }
+
+  return `Follow-up: ${dateText}`;
+}
+
+
+function formatFollowUpAuditValue_(
+  followUpDate,
+  windowStart,
+  windowEnd,
+  timezone
+) {
+  if (
+    !(followUpDate instanceof Date) ||
+    isNaN(followUpDate.getTime())
+  ) {
+    return "";
+  }
+
+  const zone = timezone || getConfiguredTimezoneWithFallback_();
+  const dateText = formatDateForAudit_(followUpDate);
+  const startMinutes = readClockMinutes_(windowStart, zone);
+  const endMinutes = readClockMinutes_(windowEnd, zone);
+  const startText = formatMinutesForBoard_(startMinutes);
+  const endText = formatMinutesForBoard_(endMinutes);
+
+  if (startText && endText) {
+    return `${dateText} ${startText}–${endText}`;
+  }
+
+  if (startText) {
+    return `${dateText} ${startText}`;
+  }
+
+  if (endText) {
+    return `${dateText} until ${endText}`;
+  }
+
+  return dateText;
+}
+
+
+function parseHtmlTimeMinutes_(text, fieldLabel) {
+  const value = String(text || "").trim();
+
+  if (!value) {
+    return null;
+  }
+
+  const minutes = readClockMinutes_(value);
+
+  if (minutes == null || !/^(\d{2}):(\d{2})$/.test(value)) {
+    throw new Error(
+      `${fieldLabel || "Time"} must be a valid time.`
+    );
+  }
+
+  return minutes;
+}
+
+
+function clinicDateTimeFromMinutes_(dateKey, minutes, timezone) {
+  const parts = String(dateKey || "").split("-");
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const text = `${parts[1]}/${parts[2]}/${parts[0]} ${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00`;
+
+  return Utilities.parseDate(
+    text,
+    timezone || getConfiguredTimezoneWithFallback_(),
+    "MM/dd/yyyy HH:mm:ss"
+  );
+}
+
+
+function callbackSortAt_(dateKey, minutes) {
+  const parts = String(dateKey || "").split("-");
+
+  if (parts.length !== 3) {
+    return 0;
+  }
+
+  const hours = Math.floor((minutes || 0) / 60);
+  const mins = (minutes || 0) % 60;
+
+  return Date.UTC(
+    Number(parts[0]),
+    Number(parts[1]) - 1,
+    Number(parts[2]),
+    hours,
+    mins,
+    0
+  );
+}
+
+
+function classifyOpenCallback_(spec) {
+  const source = spec || {};
+  const dateKey = source.dateKey || "";
+
+  if (!dateKey) {
     return {
       key: "",
       label: "",
+      sortAt: 0,
+    };
+  }
+
+  let startMinutes = source.startMinutes;
+  let endMinutes = source.endMinutes;
+
+  if (
+    startMinutes != null &&
+    endMinutes != null &&
+    endMinutes <= startMinutes
+  ) {
+    endMinutes = null;
+  }
+
+  const todayKey = source.todayKey || "";
+  const nowMinutes = source.nowMinutes == null
+    ? 0
+    : source.nowMinutes;
+  const hasStart = startMinutes != null;
+  const hasEnd = endMinutes != null;
+  const sortMinutes = hasStart ? startMinutes : 0;
+  const sortAt = callbackSortAt_(dateKey, sortMinutes);
+
+  if (!hasStart && !hasEnd) {
+    if (dateKey < todayKey) {
+      return {
+        key: "overdue",
+        label: "Follow-up overdue",
+        sortAt,
+      };
+    }
+
+    if (dateKey === todayKey) {
+      return {
+        key: "due_today",
+        label: "Follow-up due today",
+        sortAt,
+      };
+    }
+
+    return {
+      key: "upcoming",
+      label: "Follow-up scheduled",
+      sortAt,
+    };
+  }
+
+  const start = hasStart ? startMinutes : 0;
+
+  if (dateKey > todayKey || (dateKey === todayKey && nowMinutes < start)) {
+    return {
+      key: "upcoming",
+      label: "Follow-up scheduled",
+      sortAt,
     };
   }
 
   if (
-    followUpKey <
-    todayKey
+    dateKey < todayKey ||
+    (hasEnd && dateKey === todayKey && nowMinutes > endMinutes)
   ) {
     return {
       key: "overdue",
-      label:
-        "Follow-up overdue",
-    };
-  }
-
-  if (
-    followUpKey ===
-    todayKey
-  ) {
-    return {
-      key: "due_today",
-      label:
-        "Follow-up due today",
+      label: "Follow-up overdue",
+      sortAt,
     };
   }
 
   return {
-    key: "upcoming",
-    label:
-      "Follow-up scheduled",
+    key: "due_today",
+    label: "Follow-up due today",
+    sortAt,
   };
+}
+
+
+function readFollowUpWindowCell_(sheet, row, headers, name) {
+  if (!headers || !headers[name]) {
+    return "";
+  }
+
+  return sheet.getRange(row, headers[name]).getValue();
+}
+
+
+function clearFollowUpWindowCells_(sheet, row, headers) {
+  LEAD_CALLBACK_HEADER_NAMES_.forEach(name => {
+    if (headers && headers[name]) {
+      sheet.getRange(row, headers[name]).clearContent();
+    }
+  });
+}
+
+
+function assertFollowUpWindowColumns_(headers, start, end) {
+  if (!start && !end) {
+    return;
+  }
+
+  if (
+    headers &&
+    headers.next_follow_up_window_start &&
+    headers.next_follow_up_window_end
+  ) {
+    return;
+  }
+
+  throw new Error(
+    "Callback times need follow-up window columns. Run ADMIN: Setup Lead Archive Schema, then try again."
+  );
+}
+
+
+function reanchorFollowUpWindow_(value, followUpDate, timezone) {
+  const minutes = readClockMinutes_(value, timezone);
+
+  if (minutes == null) {
+    return null;
+  }
+
+  return clinicDateTimeFromMinutes_(
+    getBoardDateKey_(followUpDate, timezone),
+    minutes,
+    timezone
+  );
+}
+
+
+function resolveFollowUpWindows_(
+  data,
+  existingStart,
+  existingEnd,
+  followUpDate,
+  timezone
+) {
+  const source = data || {};
+  const windowProvided =
+    Object.prototype.hasOwnProperty.call(
+      source,
+      "windowProvided"
+    )
+      ? source.windowProvided === true
+      : (
+          Object.prototype.hasOwnProperty.call(source, "windowStart") ||
+          Object.prototype.hasOwnProperty.call(source, "windowEnd")
+        );
+
+  if (!windowProvided) {
+    return {
+      start: reanchorFollowUpWindow_(
+        existingStart,
+        followUpDate,
+        timezone
+      ),
+      end: reanchorFollowUpWindow_(
+        existingEnd,
+        followUpDate,
+        timezone
+      ),
+    };
+  }
+
+  return {
+    start: source.windowStart || null,
+    end: source.windowEnd || null,
+  };
+}
+
+
+function persistFollowUpWindows_(sheet, row, headers, windows) {
+  const start = windows && windows.start
+    ? windows.start
+    : "";
+  const end = windows && windows.end
+    ? windows.end
+    : "";
+
+  if (headers.next_follow_up_window_start) {
+    const cell = sheet.getRange(
+      row,
+      headers.next_follow_up_window_start
+    );
+
+    if (start) {
+      cell.setValue(start);
+    } else {
+      cell.clearContent();
+    }
+  }
+
+  if (headers.next_follow_up_window_end) {
+    const cell = sheet.getRange(
+      row,
+      headers.next_follow_up_window_end
+    );
+
+    if (end) {
+      cell.setValue(end);
+    } else {
+      cell.clearContent();
+    }
+  }
+}
+
+
+function buildBoardFollowUpState_(
+  nextFollowUpOn,
+  timezone,
+  todayKey,
+  windowStart,
+  windowEnd,
+  now
+) {
+  const zone = timezone || getConfiguredTimezoneWithFallback_();
+  const dateKey = getBoardDateKey_(
+    nextFollowUpOn,
+    zone
+  );
+
+  if (!dateKey) {
+    return {
+      key: "",
+      label: "",
+      sortAt: 0,
+      callbackLabel: "",
+    };
+  }
+
+  const moment = now instanceof Date
+    ? now
+    : new Date();
+  const effectiveToday = todayKey || Utilities.formatDate(
+    moment,
+    zone,
+    "yyyy-MM-dd"
+  );
+  const nowMinutes = readClockMinutes_(moment, zone);
+  const startMinutes = readClockMinutes_(windowStart, zone);
+  const endMinutes = readClockMinutes_(windowEnd, zone);
+  const state = classifyOpenCallback_({
+    dateKey,
+    todayKey: effectiveToday,
+    nowMinutes: nowMinutes == null ? 0 : nowMinutes,
+    startMinutes,
+    endMinutes,
+  });
+
+  state.callbackLabel = formatBoardCallbackLabel_(
+    formatDateForBoard_(nextFollowUpOn, zone),
+    startMinutes,
+    endMinutes
+  );
+
+  return state;
 }
 
 
@@ -14886,8 +16113,20 @@ function buildBoardCardFromLeadRow_(
   const followUpState =
     buildBoardFollowUpState_(
       nextFollowUpOn,
-      context.timezone,
-      context.todayKey
+      context.callbackTimezone ||
+        context.timezone,
+      "",
+      headers.next_follow_up_window_start
+        ? readValue(
+            "next_follow_up_window_start"
+          )
+        : "",
+      headers.next_follow_up_window_end
+        ? readValue(
+            "next_follow_up_window_end"
+          )
+        : "",
+      context.now
     );
 
 
@@ -14977,8 +16216,9 @@ function buildBoardCardFromLeadRow_(
 
 
   if (
-    status ===
-      "Open Lead / Follow Up" &&
+    isActiveOpenWorkflowStatus_(
+      status
+    ) &&
     followUpState.key ===
       "overdue"
   ) {
@@ -14992,8 +16232,9 @@ function buildBoardCardFromLeadRow_(
 
 
   if (
-    status ===
-      "Open Lead / Follow Up" &&
+    isActiveOpenWorkflowStatus_(
+      status
+    ) &&
     followUpState.key ===
       "due_today"
   ) {
@@ -15082,8 +16323,10 @@ function buildBoardCardFromLeadRow_(
       workflowComplete,
 
       lostReason:
-        readText(
-          "lost_reason"
+        formatLostReasonsForDisplay_(
+          readText(
+            "lost_reason"
+          )
         ),
 
       unrelatedType:
@@ -15141,13 +16384,7 @@ function buildBoardCardFromLeadRow_(
           : 0,
 
       followUpOn:
-        nextFollowUpOn instanceof
-          Date &&
-        !isNaN(
-          nextFollowUpOn.getTime()
-        )
-          ? nextFollowUpOn.getTime()
-          : 0,
+        followUpState.sortAt || 0,
 
       scheduledDate:
         scheduledDate instanceof
@@ -15163,7 +16400,7 @@ function buildBoardCardFromLeadRow_(
 
 
 /**
- * Builds the complete four-lane Board data model.
+ * Builds the complete five-lane Board data model.
  */
 function buildPatientBoardData_(leadsTable) {
   const table =
@@ -15241,6 +16478,9 @@ function buildPatientBoardData_(leadsTable) {
 
     const context = {
       timezone,
+      callbackTimezone:
+        getConfiguredTimezoneWithFallback_(),
+      now: new Date(),
       todayKey,
       maxStandardAttempts,
     };
@@ -15282,10 +16522,31 @@ function buildPatientBoardData_(leadsTable) {
         }
 
 
-        const lane =
+        let lane =
           laneByStatus[
             card.status
           ];
+
+        /*
+         * Legacy combined status stays on the sheet
+         * until the admin migration. Place it without
+         * rewriting the row: Follow Up when a real
+         * callback date exists, otherwise Open Lead.
+         */
+        if (
+          !lane &&
+          card.status ===
+            LEGACY_OPEN_FOLLOW_UP_STATUS_
+        ) {
+          lane =
+            laneByStatus[
+              legacyOpenFollowUpTargetStatus_(
+                rowValues[
+                  headers.next_follow_up_on - 1
+                ]
+              )
+            ];
+        }
 
 
         if (!lane) {
@@ -15396,9 +16657,53 @@ function compareBoardCardsByName_(
 
 
 /**
- * Priority bucket for Open Lead / Follow Up.
+ * Open Lead shows leads that have not been
+ * contacted first, then newest created first so
+ * a new intake is at the top of the column.
+ * Callback priority belongs to the Follow Up lane.
  */
-function getOpenBoardPriority_(
+function sortOpenBoardCards_(
+  cards
+) {
+  cards.sort(
+    (a, b) => {
+      const aUntouched =
+        Number(
+          a.workflow.attemptCount
+        ) === 0;
+
+      const bUntouched =
+        Number(
+          b.workflow.attemptCount
+        ) === 0;
+
+      if (aUntouched !== bUntouched) {
+        return aUntouched ? -1 : 1;
+      }
+
+      const aCreated =
+        a.sort.createdAt ||
+        0;
+
+      const bCreated =
+        b.sort.createdAt ||
+        0;
+
+      if (aCreated !== bCreated) {
+        return bCreated - aCreated;
+      }
+
+      return compareBoardCardsByName_(a, b);
+    }
+  );
+}
+
+
+/**
+ * Follow Up bucket:
+ * 0 overdue, 1 due now/today, 2 future, 3 no date.
+ */
+function getFollowUpBoardPriority_(
   card
 ) {
   const followUpKey =
@@ -15406,78 +16711,43 @@ function getOpenBoardPriority_(
       ? card.workflow.followUpState.key
       : "";
 
-  if (
-    followUpKey ===
-    "overdue"
-  ) {
+  if (followUpKey === "overdue") {
     return 0;
   }
 
-  if (
-    followUpKey ===
-    "due_today"
-  ) {
+  if (followUpKey === "due_today") {
     return 1;
   }
 
-  if (
-    Number(
-      card.workflow.attemptCount
-    ) === 0
-  ) {
+  if (followUpKey === "upcoming") {
     return 2;
   }
 
-  if (
-    followUpKey ===
-    "upcoming"
-  ) {
-    return 3;
-  }
-
-  return 4;
+  return 3;
 }
 
 
 /**
- * Sorts the Open lane operationally.
+ * Sorts Follow Up by callback urgency, then by
+ * the normal untouched/oldest/name order when
+ * the card has no callback date.
  */
-function sortOpenBoardCards_(
+function sortFollowUpBoardCards_(
   cards
 ) {
   cards.sort(
     (a, b) => {
       const aPriority =
-        getOpenBoardPriority_(
-          a
-        );
+        getFollowUpBoardPriority_(a);
 
       const bPriority =
-        getOpenBoardPriority_(
-          b
-        );
+        getFollowUpBoardPriority_(b);
 
-
-      if (
-        aPriority !==
-        bPriority
-      ) {
-        return (
-          aPriority -
-          bPriority
-        );
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
       }
 
-
-      /*
-       * Follow-up groups:
-       * earliest follow-up first.
-       */
-      if (
-        aPriority === 0 ||
-        aPriority === 1 ||
-        aPriority === 3
-      ) {
+      if (aPriority <= 2) {
         const aFollowUp =
           a.sort.followUpOn ||
           Number.MAX_SAFE_INTEGER;
@@ -15486,23 +16756,21 @@ function sortOpenBoardCards_(
           b.sort.followUpOn ||
           Number.MAX_SAFE_INTEGER;
 
-        if (
-          aFollowUp !==
-          bFollowUp
-        ) {
-          return (
-            aFollowUp -
-            bFollowUp
-          );
+        if (aFollowUp !== bFollowUp) {
+          return aFollowUp - bFollowUp;
+        }
+      } else {
+        const aUntouched =
+          Number(a.workflow.attemptCount) === 0;
+
+        const bUntouched =
+          Number(b.workflow.attemptCount) === 0;
+
+        if (aUntouched !== bUntouched) {
+          return aUntouched ? -1 : 1;
         }
       }
 
-
-      /*
-       * Within untouched/remaining leads,
-       * oldest lead comes first so aging leads
-       * do not disappear underneath newer ones.
-       */
       const aCreated =
         a.sort.createdAt ||
         Number.MAX_SAFE_INTEGER;
@@ -15511,23 +16779,11 @@ function sortOpenBoardCards_(
         b.sort.createdAt ||
         Number.MAX_SAFE_INTEGER;
 
-      if (
-        aCreated !==
-        bCreated
-      ) {
-        return (
-          aCreated -
-          bCreated
-        );
+      if (aCreated !== bCreated) {
+        return aCreated - bCreated;
       }
 
-
-      return (
-        compareBoardCardsByName_(
-          a,
-          b
-        )
-      );
+      return compareBoardCardsByName_(a, b);
     }
   );
 }
@@ -15563,22 +16819,6 @@ function sortScheduledBoardCards_(
         return aMissing
           ? -1
           : 1;
-      }
-
-
-      /*
-       * Incomplete workflows before completed ones.
-       */
-      if (
-        a.workflow
-          .workflowComplete !==
-        b.workflow
-          .workflowComplete
-      ) {
-        return a.workflow
-          .workflowComplete
-          ? 1
-          : -1;
       }
 
 
@@ -15636,24 +16876,7 @@ function sortClosedBoardCards_(
   cards.sort(
     (a, b) => {
       /*
-       * Records that still need workflow completion
-       * stay above already-completed records.
-       */
-      if (
-        a.workflow
-          .workflowComplete !==
-        b.workflow
-          .workflowComplete
-      ) {
-        return a.workflow
-          .workflowComplete
-          ? 1
-          : -1;
-      }
-
-
-      /*
-       * Within each group, newest activity first.
+       * Newest activity first.
        */
       if (
         a.sort.lastActivityAt !==
@@ -15688,8 +16911,14 @@ function sortPatientBoardLanes_(
       switch (
         lane.status
       ) {
-        case "Open Lead / Follow Up":
+        case "Open Lead":
           sortOpenBoardCards_(
+            lane.cards
+          );
+          break;
+
+        case "Follow Up":
+          sortFollowUpBoardCards_(
             lane.cards
           );
           break;
@@ -15745,16 +16974,12 @@ function buildBoardLaneMetrics_(
   cards.forEach(
     card => {
       if (
-        card.workflow
-          .workflowComplete
-      ) {
-        metrics.complete += 1;
-      }
-
-
-      if (
-        lane.status ===
-        "Open Lead / Follow Up"
+        (
+          lane.status ===
+            "Open Lead" ||
+          lane.status ===
+            "Follow Up"
+        )
       ) {
         const followUpKey =
           card.workflow
@@ -15842,15 +17067,6 @@ function buildPatientBoardSummary_(
       lane.cards.forEach(
         card => {
           if (
-            card.workflow
-              .workflowComplete
-          ) {
-            summary.completed +=
-              1;
-          }
-
-
-          if (
             Array.isArray(
               card.warnings
             )
@@ -15861,8 +17077,12 @@ function buildPatientBoardSummary_(
 
 
           if (
-            lane.status ===
-            "Open Lead / Follow Up"
+            (
+              lane.status ===
+                "Open Lead" ||
+              lane.status ===
+                "Follow Up"
+            )
           ) {
             const key =
               card.workflow
@@ -15958,16 +17178,11 @@ function buildBoardCardDisplayText_(
 
 
   /*
-   * Contact progress
+   * Contact progress. Assignment and reached
+   * stay on the lead record and are not shown.
    */
   lines.push(
-    [
-      `☎ ${card.workflow.attemptLabel}`,
-
-      card.workflow.reachedPatient
-        ? "✓ Reached"
-        : "Not reached",
-    ].join("  •  ")
+    `☎ ${card.workflow.attemptLabel}`
   );
 
 
@@ -15981,27 +17196,19 @@ function buildBoardCardDisplayText_(
 
 
   /*
-   * Assignment
-   */
-  lines.push(
-    card.workflow.assignedTo
-      ? `Assigned: ${card.workflow.assignedTo}`
-      : "Assigned: Unassigned"
-  );
-
-
-  /*
    * Status-specific information
    */
   if (
-    card.status ===
-    "Open Lead / Follow Up"
+    isActiveOpenWorkflowStatus_(
+      card.status
+    )
   ) {
     if (
-      card.workflow.nextFollowUpOn
+      card.workflow.followUpState &&
+      card.workflow.followUpState.callbackLabel
     ) {
       lines.push(
-        `Follow-up: ${card.workflow.nextFollowUpOn}`
+        card.workflow.followUpState.callbackLabel
       );
     }
   }
@@ -16048,18 +17255,6 @@ function buildBoardCardDisplayText_(
 
 
   /*
-   * Completion indicator
-   */
-  if (
-    card.workflow.workflowComplete
-  ) {
-    lines.push(
-      "✓ Workflow complete"
-    );
-  }
-
-
-  /*
    * Warnings always appear last.
    */
   if (
@@ -16097,7 +17292,8 @@ function getBoardLaneStyle_(
 ) {
   switch (status) {
 
-    case "Open Lead / Follow Up":
+    case "Open Lead":
+    case "Follow Up":
       return {
         headerBackground:
           "#17233A",
@@ -16225,7 +17421,7 @@ function getBoardLaneStyle_(
 
 
 /**
- * Open Lead / Follow Up patient-card heatmap.
+ * Open Lead and Follow Up patient-card heatmap.
  *
  * Uses the Board card's existing in-memory
  * attemptCount. Scale is capped at 3+.
@@ -16291,8 +17487,12 @@ function buildBoardLaneCountText_(
 
 
   if (
-    lane.status ===
-    "Open Lead / Follow Up"
+    (
+      lane.status ===
+        "Open Lead" ||
+      lane.status ===
+        "Follow Up"
+    )
   ) {
     if (
       metrics.overdue > 0
@@ -16334,29 +17534,6 @@ function buildBoardLaneCountText_(
       );
     }
 
-    if (
-      metrics.complete > 0
-    ) {
-      parts.push(
-        `${metrics.complete} complete`
-      );
-    }
-  }
-
-
-  if (
-    lane.status ===
-      "Case Lost" ||
-    lane.status ===
-      "Unrelated"
-  ) {
-    if (
-      metrics.complete > 0
-    ) {
-      parts.push(
-        `${metrics.complete} complete`
-      );
-    }
   }
 
 
@@ -16607,39 +17784,66 @@ function preparePatientBoardSheet_(
 
 
   /*
-   * Clear A2:X{lastClearRow}, not merely A2:T.
+   * Clear A2:AC{lastClearRow}.
    *
-   * A2:T fully contains old and new lane merges
-   * (A:D / B:E … P:S / Q:T) but only the first
-   * column of the leftover T:W action-rail merges.
-   * breakApart() on that partial range throws:
-   * "You must select all cells in a merged range
-   * to merge or unmerge them."
-   *
-   * A2:X fully contains:
-   *   old lanes A:D F:I K:N P:S
-   *   new lanes B:E G:J L:O Q:T
-   *   old rail  T:W
-   *   new rail  U:X
+   * That width fully contains the five lane merges
+   * (B:E, G:J, L:O, Q:T, V:Y), the spacer columns,
+   * and the Z:AC action rail, including any older
+   * four-lane rail merges that still need to
+   * unmerge. breakApart() throws if a merge is
+   * only partly selected.
    *
    * Column A is the empty logo gutter and is
-   * included only so leftover A:D merges unmerge.
-   * Row 1 is never part of this range.
+   * included only so a leftover merge that starts
+   * in A can unmerge. Row 1 is never part of this
+   * range.
    *
-   * Canvas paint stays A2:T. Values stay B:T.
-   * Rail restyle stays U:X.
+   * Canvas paint stays A2:Y. Values stay B:Y.
+   * Rail restyle stays Z:AC.
    *
    * Clearing getMaxRows() rewrote unused empty rows
    * on every refresh.
    *
+   * getLastRow() does not include formatting-only
+   * rows. A five-lane refresh could stop above a
+   * leftover four-lane tail (canvas through T,
+   * old rail on U:X, white Y:AC). Extend the
+   * shared clear/paint boundary through that tail
+   * and stop at the first default-white row.
+   *
    * Do not touch Leads or any backend sheet.
    */
-  const lastClearRow =
+  const contentLastRow =
     Math.max(
       sheet.getLastRow(),
       requiredRows,
       layout.firstCardRow
     );
+
+  const lastClearRow =
+    boardSurfaceTailLastRow_(
+      sheet,
+      contentLastRow
+    );
+
+
+  /*
+   * Repaint every row whose formatting was just
+   * cleared. lastClearRow can exceed requiredRows
+   * when a short Board replaces a taller one.
+   * Painting only through requiredRows left those
+   * cleared rows white between the new canvas and
+   * any older dark rows still below lastClearRow.
+   *
+   * This is not getMaxRows(). Rows past the cleared
+   * area were not reset and are not rewritten.
+   */
+  const canvasLastRow =
+    Math.max(
+      requiredRows,
+      lastClearRow
+    );
+
 
   const clearRowCount =
     boardDynamicRowCount_(
@@ -16695,15 +17899,12 @@ function preparePatientBoardSheet_(
 
 
   /*
-   * Canvas + default font on the current DYNAMIC
-   * Board presentation area only: A2:T{requiredRows}.
+   * Canvas + default font on A2:Y{canvasLastRow}.
    * Column A is an empty dark gutter under the logo.
-   * requiredRows is the last physical row; convert
-   * it to a row count from firstDynamicRow. Never
-   * paint row 1.
-   *
-   * Stale cards below this area were already reset
-   * by the clear above; they are not restyled here.
+   * canvasLastRow is the last physical row of the
+   * cleared presentation area; convert it to a row
+   * count from firstDynamicRow. Never paint row 1.
+   * Never paint getMaxRows().
    */
   withPerf_(
     "board canvas/font",
@@ -16713,7 +17914,7 @@ function preparePatientBoardSheet_(
           layout.firstDynamicRow,
           layout.gutterColumn,
           boardDynamicRowCount_(
-            requiredRows
+            canvasLastRow
           ),
           layout.lastBoardColumn
         )
@@ -16859,10 +18060,15 @@ function applyBoardActionRail_(
    * physical row as the Board canvas. Never
    * include row 1. Never use a fixed A1 range.
    *
-   * Clear through lastClearRow (already in memory)
-   * so a shrinking Board does not leave a taller
-   * sidebar. Paint only through requiredRows so
-   * the dark rail and canvas bottoms align.
+   * Clear and repaint through the same effective
+   * last row. lastClearRow can exceed requiredRows
+   * when a short Board replaces a taller one.
+   * clearFormat() without a matching background
+   * left Z:AC white beside the dark A:Y canvas.
+   *
+   * railClearLastRow matches canvasLastRow. This
+   * is not getMaxRows(). Rows past the cleared
+   * presentation area stay untouched.
    */
   const railStartRow =
     layout.firstDynamicRow;
@@ -16874,7 +18080,7 @@ function applyBoardActionRail_(
     );
 
 
-  const railClear =
+  const rail =
     sheet.getRange(
       railStartRow,
       layout.actionRailFirstColumn,
@@ -16885,22 +18091,11 @@ function applyBoardActionRail_(
     );
 
 
-  railClear.breakApart();
-  railClear.clearContent();
-  railClear.clearFormat();
-  railClear.clearNote();
-  railClear.clearDataValidations();
-
-
-  const rail =
-    sheet.getRange(
-      railStartRow,
-      layout.actionRailFirstColumn,
-      boardDynamicRowCount_(
-        requiredRows
-      ),
-      layout.actionRailColumnCount
-    );
+  rail.breakApart();
+  rail.clearContent();
+  rail.clearFormat();
+  rail.clearNote();
+  rail.clearDataValidations();
 
 
   rail
@@ -16941,7 +18136,7 @@ function applyBoardActionRail_(
 
 
   /*
-   * U2:X3 stays an empty dark surface for manual
+   * Z2:AC3 stays an empty dark surface for manual
    * OPEN PATIENT / QUICK ACTIONS Drawings. Do not
    * create, move, or delete Drawings here.
    *
@@ -17630,7 +18825,10 @@ function collectBoardCardRangeA1s_(boardData) {
 
       if (hasWarning) {
         warning.push(a1);
-      } else if (status === "Open Lead / Follow Up") {
+      } else if (
+        status === "Open Lead" ||
+        status === "Follow Up"
+      ) {
         const background = getOpenLeadAttemptBackground_(
           card.workflow &&
           card.workflow.attemptCount
@@ -17692,7 +18890,7 @@ function applyPatientBoardCardBorders_(
 function formatPatientBoardCards_(sheet, boardData) {
   const ranges = collectBoardCardRangeA1s_(boardData);
   const openLeadStyle = getBoardLaneStyle_(
-    "Open Lead / Follow Up"
+    "Open Lead"
   );
 
   applyRangeListChunks_(sheet, ranges.all, rangeList => {
@@ -19473,6 +20671,7 @@ const PATIENT_DASHBOARD = {
 
     "open_age_hours",
     "schedule_date_missing",
+    "archived",
   ],
 };
 
@@ -19853,7 +21052,6 @@ function applyDashboardHeaderToolbarStyles_(sheet) {
     "C4",
     "E4",
     "G4",
-    "I4",
     "A5",
     "D5",
     "F5",
@@ -19867,7 +21065,6 @@ function applyDashboardHeaderToolbarStyles_(sheet) {
     "D4",
     "F4",
     "H4",
-    "J4",
     "B5",
   ])
     .setBackground(theme.input)
@@ -19879,7 +21076,6 @@ function applyDashboardHeaderToolbarStyles_(sheet) {
       "D4",
       "F4",
       "H4",
-      "J4",
       "B5",
     ])
   );
@@ -19952,23 +21148,14 @@ function buildDashboardFilterOptionsFromLeadsTable_(table) {
   const headers = table.headers;
   const reasonSet = new Set();
   const sourceSet = new Set();
-  const employeeSet = new Set();
 
   table.values.forEach(rowValues => {
-    if (isLeadRowArchived_(headers, rowValues)) {
-      return;
-    }
-
     const reason = String(
       rowValues[headers.appointment_reason - 1] || ""
     ).trim();
 
     const source = String(
       rowValues[headers.intake_source - 1] || ""
-    ).trim();
-
-    const employee = String(
-      rowValues[headers.assigned_to - 1] || ""
     ).trim();
 
     if (reason) {
@@ -19978,10 +21165,6 @@ function buildDashboardFilterOptionsFromLeadsTable_(table) {
     if (source) {
       sourceSet.add(source);
     }
-
-    if (employee) {
-      employeeSet.add(employee);
-    }
   });
 
   const sortValues = set =>
@@ -19990,7 +21173,6 @@ function buildDashboardFilterOptionsFromLeadsTable_(table) {
   return {
     reasons: sortValues(reasonSet),
     sources: sortValues(sourceSet),
-    employees: sortValues(employeeSet),
   };
 }
 
@@ -20460,22 +21642,19 @@ function buildDashboardLeadSnapshot_(leadsTable, activityIndexOverride) {
       }
 
       /*
-       * Operational Dashboard population matches
-       * the Board. Live-archived leads remain in
-       * Leads and ActivityLog until cold storage,
-       * but they do not contribute to Dashboard
-       * KPIs or filter choices. Offloading an
-       * already archived lead therefore does not
-       * change these totals.
+       * Live archived leads stay in this snapshot
+       * so trend, intake, conversion, and outcome
+       * metrics keep their history for a year.
+       *
+       * Current workload flags are cleared below
+       * for archived rows. The Board still excludes
+       * archived leads. Manual cold storage removes
+       * the row and then drops it from this snapshot.
        */
-      if (
-        isLeadRowArchived_(
-          headers,
-          rowValues
-        )
-      ) {
-        return;
-      }
+      const archivedLead = isLeadRowArchived_(
+        headers,
+        rowValues
+      );
 
 
       const createdAt =
@@ -20675,9 +21854,9 @@ function buildDashboardLeadSnapshot_(leadsTable, activityIndexOverride) {
 
       const openUntouched =
         (
-          status ===
-            "Open Lead / Follow Up" &&
-          !workflowComplete &&
+          isActiveOpenWorkflowStatus_(
+            status
+          ) &&
           attemptCount === 0
         );
 
@@ -20693,33 +21872,55 @@ function buildDashboardLeadSnapshot_(leadsTable, activityIndexOverride) {
 
 
       if (
-        status ===
-          "Open Lead / Follow Up" &&
-        !workflowComplete &&
+        isActiveOpenWorkflowStatus_(
+          status
+        ) &&
         isDashboardDate_(
           nextFollowUpOn
         )
       ) {
+        const callbackTimezone =
+          getConfiguredTimezoneWithFallback_();
+        const callbackState =
+          buildBoardFollowUpState_(
+            nextFollowUpOn,
+            callbackTimezone,
+            Utilities.formatDate(
+              now,
+              callbackTimezone,
+              "yyyy-MM-dd"
+            ),
+            headers.next_follow_up_window_start
+              ? readValue(
+                  rowValues,
+                  "next_follow_up_window_start"
+                )
+              : "",
+            headers.next_follow_up_window_end
+              ? readValue(
+                  rowValues,
+                  "next_follow_up_window_end"
+                )
+              : "",
+            now
+          );
+
+        followUpOverdue =
+          callbackState.key === "overdue";
+
+        followUpDueToday =
+          callbackState.key === "due_today";
+
         const dayDifference =
           getDashboardDayDifference_(
             nextFollowUpOn,
             now
           );
 
-
-        followUpOverdue =
-          dayDifference < 0;
-
-
-        followUpDueToday =
-          dayDifference === 0;
-
-
         followUpDueNext7Days =
-          (
-            dayDifference > 0 &&
-            dayDifference <= 7
-          );
+          callbackState.key === "upcoming" &&
+          dayDifference >= 0 &&
+          dayDifference <= 7;
       }
 
 
@@ -20728,9 +21929,9 @@ function buildDashboardLeadSnapshot_(leadsTable, activityIndexOverride) {
 
 
       if (
-        status ===
-          "Open Lead / Follow Up" &&
-        !workflowComplete &&
+        isActiveOpenWorkflowStatus_(
+          status
+        ) &&
         isDashboardDate_(
           createdAt
         )
@@ -20829,17 +22030,19 @@ function buildDashboardLeadSnapshot_(leadsTable, activityIndexOverride) {
 
         legitimateAppointmentLead,
 
-        openUntouched,
+        archivedLead ? false : openUntouched,
 
-        followUpOverdue,
+        archivedLead ? false : followUpOverdue,
 
-        followUpDueToday,
+        archivedLead ? false : followUpDueToday,
 
-        followUpDueNext7Days,
+        archivedLead ? false : followUpDueNext7Days,
 
-        openAgeHours,
+        archivedLead ? "" : openAgeHours,
 
-        scheduleDateMissing,
+        archivedLead ? false : scheduleDateMissing,
+
+        archivedLead,
       ]);
     }
   );
@@ -21102,6 +22305,85 @@ function setDashboardNamedRange_(
 
 
 /**
+ * Removes the retired Assigned Employee control
+ * from an existing Dashboard without rewriting
+ * historical assigned_to values.
+ */
+function retireDashboardAssignedEmployeeFilter_(
+  sheet
+) {
+  if (!sheet) {
+    return;
+  }
+
+  const theme =
+    PATIENT_DASHBOARD_THEME;
+
+  const label =
+    sheet.getRange(
+      "I4"
+    );
+
+  const input =
+    sheet.getRange(
+      "J4"
+    );
+
+  label.clearContent();
+
+  input
+    .clearContent()
+    .clearDataValidations();
+
+  label
+    .setBackground(
+      theme.panel
+    )
+    .setFontColor(
+      theme.bodyText
+    )
+    .setFontWeight(
+      "normal"
+    );
+
+  input
+    .setBackground(
+      theme.panel
+    )
+    .setFontColor(
+      theme.bodyText
+    )
+    .setBorder(
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    );
+
+  const name =
+    PATIENT_DASHBOARD
+      .namedRanges
+      .employee;
+
+  SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getNamedRanges()
+    .forEach(
+      namedRange => {
+        if (
+          namedRange.getName() ===
+          name
+        ) {
+          namedRange.remove();
+        }
+      }
+    );
+}
+
+
+/**
  * Refreshes Dashboard dropdown values.
  */
 function refreshDashboardFilterOptions_() {
@@ -21164,15 +22446,9 @@ function refreshDashboardFilterOptions_() {
     );
 
 
-  sheet
-    .getRange(
-      "J4"
-    )
-    .setDataValidation(
-      buildDropdown(
-        options.employees
-      )
-    );
+  retireDashboardAssignedEmployeeFilter_(
+    sheet
+  );
 
 
   /*
@@ -21273,15 +22549,6 @@ function setupDashboardFoundation() {
       .trim();
 
 
-  const previousEmployee =
-    sheet
-      .getRange(
-        "J4"
-      )
-      .getDisplayValue()
-      .trim();
-
-
   /*
    * Rebuild the Dashboard control area below the
    * static application header. Row 1 is owned by
@@ -21370,18 +22637,6 @@ function setupDashboardFoundation() {
     );
 
 
-  sheet
-    .getRange(
-      "I4"
-    )
-    .setValue(
-      "Assigned Employee"
-    )
-    .setFontWeight(
-      "bold"
-    );
-
-
   /*
    * Restore or initialize filter values.
    */
@@ -21437,16 +22692,6 @@ function setupDashboardFoundation() {
     );
 
 
-  sheet
-    .getRange(
-      "J4"
-    )
-    .setValue(
-      previousEmployee ||
-      "All"
-    );
-
-
   /*
    * Universal filter named ranges.
    */
@@ -21490,17 +22735,6 @@ function setupDashboardFoundation() {
 
     sheet.getRange(
       "H4"
-    )
-  );
-
-
-  setDashboardNamedRange_(
-    PATIENT_DASHBOARD
-      .namedRanges
-      .employee,
-
-    sheet.getRange(
-      "J4"
     )
   );
 
@@ -21739,13 +22973,7 @@ function getDashboardFilterState_() {
       ),
 
     employee:
-      normalizeOption(
-        getNamedText(
-          PATIENT_DASHBOARD
-            .namedRanges
-            .employee
-        )
-      ),
+      "",
   };
 
   if (context) {
@@ -21935,8 +23163,8 @@ function dashboardDateMatchesFilter_(
 
 
 /**
- * Applies Appointment Reason, Source, and Assigned
- * Employee to one DashboardData lead.
+ * Applies Appointment Reason and Source to one
+ * DashboardData lead.
  */
 function dashboardRecordMatchesCategoryFilters_(
   record,
@@ -21958,14 +23186,6 @@ function dashboardRecordMatchesCategoryFilters_(
     ).trim();
 
 
-  const employee =
-    String(
-      record
-        .assigned_to ||
-      ""
-    ).trim();
-
-
   if (
     filters.reason &&
     reason !==
@@ -21979,15 +23199,6 @@ function dashboardRecordMatchesCategoryFilters_(
     filters.source &&
     source !==
       filters.source
-  ) {
-    return false;
-  }
-
-
-  if (
-    filters.employee &&
-    employee !==
-      filters.employee
   ) {
     return false;
   }
@@ -22462,22 +23673,16 @@ function finalizeDashboardEmployeeWorkload_(groups) {
   const rows = Object.values(groups)
     .map(group => ({
       employee: group.employee,
-      openAssigned: group.openAssigned,
       attemptsToday: group.attemptsToday,
-      followUpsDue: group.followUpsDue,
       scheduledToday: group.scheduledLeadIdsToday.size,
     }))
     .sort((a, b) => {
-      if (a.openAssigned !== b.openAssigned) {
-        return b.openAssigned - a.openAssigned;
-      }
-
-      if (a.followUpsDue !== b.followUpsDue) {
-        return b.followUpsDue - a.followUpsDue;
-      }
-
       if (a.attemptsToday !== b.attemptsToday) {
         return b.attemptsToday - a.attemptsToday;
+      }
+
+      if (a.scheduledToday !== b.scheduledToday) {
+        return b.scheduledToday - a.scheduledToday;
       }
 
       return a.employee.localeCompare(b.employee);
@@ -22485,16 +23690,12 @@ function finalizeDashboardEmployeeWorkload_(groups) {
 
   const totals = rows.reduce(
     (total, row) => {
-      total.openAssigned += row.openAssigned;
       total.attemptsToday += row.attemptsToday;
-      total.followUpsDue += row.followUpsDue;
       total.scheduledToday += row.scheduledToday;
       return total;
     },
     {
-      openAssigned: 0,
       attemptsToday: 0,
-      followUpsDue: 0,
       scheduledToday: 0,
     }
   );
@@ -22503,6 +23704,18 @@ function finalizeDashboardEmployeeWorkload_(groups) {
     rows,
     totals,
   };
+}
+
+
+function dashboardActivityActorLabel_(rowValues, headers) {
+  const name = String(
+    rowValues[headers.actor_name - 1] || ""
+  ).trim();
+  const email = String(
+    rowValues[headers.actor_email - 1] || ""
+  ).trim();
+
+  return name || email || "(Unknown actor)";
 }
 
 
@@ -22521,6 +23734,7 @@ function applyDashboardWorkloadActivity_(
 
   const headers = table.headers;
   const todayKey = getDashboardDateKey_(new Date());
+  const countedAttempts = {};
 
   table.values.forEach(rowValues => {
     const leadId = String(
@@ -22553,16 +23767,34 @@ function applyDashboardWorkloadActivity_(
       return;
     }
 
-    const workload = ensureDashboardEmployeeWorkloadGroup_(
-      groups,
-      leadAssignee[leadId]
+    const actor = dashboardActivityActorLabel_(
+      rowValues,
+      headers
     );
     const activityType = String(
       rowValues[headers.activity_type - 1] || ""
     ).trim();
 
+    /*
+     * Staff-action counts use the ActivityLog actor.
+     * Assignment is no longer recorded for new leads,
+     * so attempts are not credited to assigned_to.
+     * One multi-method action shares occurred_at and
+     * counts once.
+     */
     if (activityType === "contact_attempt") {
-      workload.attemptsToday += 1;
+      const stamp = activityDate instanceof Date
+        ? activityDate.getTime()
+        : String(activityDate);
+      const dedupeKey = `${leadId}|${stamp}`;
+
+      if (!countedAttempts[dedupeKey]) {
+        countedAttempts[dedupeKey] = true;
+        ensureDashboardEmployeeWorkloadGroup_(
+          groups,
+          actor
+        ).attemptsToday += 1;
+      }
     }
 
     const toStatus = String(
@@ -22573,11 +23805,13 @@ function applyDashboardWorkloadActivity_(
       activityType === "status_change" &&
       toStatus === "Scheduled"
     ) {
-      workload.scheduledLeadIdsToday.add(leadId);
+      ensureDashboardEmployeeWorkloadGroup_(
+        groups,
+        actor
+      ).scheduledLeadIdsToday.add(leadId);
     }
   });
 }
-
 
 /**
  * Pass 3.5: one in-memory pass over the filtered
@@ -22658,17 +23892,13 @@ function buildDashboardSharedLeadAggregates_(
     }
 
     const status = String(record.status || "").trim();
-    const completeBoolean = Boolean(record.workflow_complete);
-    const completeFlag = getDashboardBoolean_(
-      record.workflow_complete
-    );
+    const archivedLead = getDashboardBoolean_(record.archived);
     const ageHours = Number(record.open_age_hours);
 
     if (Boolean(record.follow_up_overdue)) {
       needsAttention += 1;
     } else if (
-      status === "Open Lead / Follow Up" &&
-      !completeBoolean &&
+      isActiveOpenWorkflowStatus_(status) &&
       Number.isFinite(ageHours) &&
       ageHours >= 168
     ) {
@@ -22703,8 +23933,8 @@ function buildDashboardSharedLeadAggregates_(
     }
 
     if (
-      status === "Open Lead / Follow Up" &&
-      !completeFlag
+      isActiveOpenWorkflowStatus_(status) &&
+      !archivedLead
     ) {
       openLeadCount += 1;
 
@@ -22783,7 +24013,7 @@ function buildDashboardSharedLeadAggregates_(
       incrementDashboardStatusGroup_(
         caseLostGroups,
         getDashboardGroupLabel_(
-          record.lost_reason,
+          formatLostReasonsForDisplay_(record.lost_reason),
           "(Reason missing)"
         )
       );
@@ -22803,31 +24033,7 @@ function buildDashboardSharedLeadAggregates_(
     const leadId = String(record.lead_id || "").trim();
 
     if (leadId) {
-      const employee = getDashboardGroupLabel_(
-        record.assigned_to,
-        "(Unassigned)"
-      );
-
-      leadAssignee[leadId] = employee;
-
-      const workload = ensureDashboardEmployeeWorkloadGroup_(
-        workloadGroups,
-        employee
-      );
-
-      if (
-        status === "Open Lead / Follow Up" &&
-        !completeFlag
-      ) {
-        workload.openAssigned += 1;
-
-        if (
-          getDashboardBoolean_(record.follow_up_overdue) ||
-          getDashboardBoolean_(record.follow_up_due_today)
-        ) {
-          workload.followUpsDue += 1;
-        }
-      }
+      leadAssignee[leadId] = true;
     }
   });
 
@@ -23305,15 +24511,6 @@ function buildDashboardFilterSummary_(
   ) {
     parts.push(
       `Source: ${filters.source}`
-    );
-  }
-
-
-  if (
-    filters.employee
-  ) {
-    parts.push(
-      `Assigned: ${filters.employee}`
     );
   }
 
@@ -25944,253 +27141,35 @@ function buildDashboardStatusBreakdown_(
 
 
 /**
- * Builds operational workload by the lead's CURRENT
- * assigned employee.
+ * Counts today's employee actions for one cohort.
  *
- * Activity counts are attributed to the current
- * assignee because this table represents current
- * workload ownership, not employee-performance
- * scoring.
+ * Rows are ActivityLog actors. Current assignment
+ * is not lead ownership and is not reported here.
  */
 function buildDashboardEmployeeWorkload_(
   cohort
 ) {
   const groups = {};
-
   const leadAssignee = {};
 
+  (cohort || []).forEach(record => {
+    const leadId = String(
+      record.lead_id || ""
+    ).trim();
 
-  const ensureEmployee =
-    employee => {
-
-      if (
-        !groups[
-          employee
-        ]
-      ) {
-        groups[
-          employee
-        ] = {
-          employee,
-
-          openAssigned:
-            0,
-
-          attemptsToday:
-            0,
-
-          followUpsDue:
-            0,
-
-          scheduledLeadIdsToday:
-            new Set(),
-        };
-      }
-
-
-      return groups[
-        employee
-      ];
-    };
-
-
-  /*
-   * Build current assignment / workflow ownership.
-   */
-  cohort.forEach(
-    record => {
-
-      const leadId =
-        String(
-          record.lead_id ||
-          ""
-        ).trim();
-
-
-      if (!leadId) {
-        return;
-      }
-
-
-      const employee =
-        getDashboardGroupLabel_(
-          record.assigned_to,
-          "(Unassigned)"
-        );
-
-
-      leadAssignee[
-        leadId
-      ] =
-        employee;
-
-
-      const workload =
-        ensureEmployee(
-          employee
-        );
-
-
-      const status =
-        String(
-          record.status ||
-          ""
-        ).trim();
-
-
-      const complete =
-        getDashboardBoolean_(
-          record
-            .workflow_complete
-        );
-
-
-      if (
-        status ===
-          "Open Lead / Follow Up" &&
-        !complete
-      ) {
-        workload
-          .openAssigned +=
-          1;
-
-
-        if (
-          getDashboardBoolean_(
-            record
-              .follow_up_overdue
-          ) ||
-          getDashboardBoolean_(
-            record
-              .follow_up_due_today
-          )
-        ) {
-          workload
-            .followUpsDue +=
-            1;
-        }
-      }
+    if (leadId) {
+      leadAssignee[leadId] = true;
     }
-  );
+  });
 
-
-  /*
-   * Count today's activity on leads in the selected
-   * cohort. Pass 3.5: reuse the cached ActivityLog
-   * table instead of a second worksheet read.
-   */
   applyDashboardWorkloadActivity_(
     leadAssignee,
     groups
   );
 
-
-  const rows =
-    Object
-      .values(
-        groups
-      )
-      .map(
-        group => ({
-          employee:
-            group.employee,
-
-          openAssigned:
-            group.openAssigned,
-
-          attemptsToday:
-            group.attemptsToday,
-
-          followUpsDue:
-            group.followUpsDue,
-
-          scheduledToday:
-            group
-              .scheduledLeadIdsToday
-              .size,
-        })
-      )
-      .sort(
-        (
-          a,
-          b
-        ) => {
-
-          if (
-            a.openAssigned !==
-            b.openAssigned
-          ) {
-            return (
-              b.openAssigned -
-              a.openAssigned
-            );
-          }
-
-
-          if (
-            a.followUpsDue !==
-            b.followUpsDue
-          ) {
-            return (
-              b.followUpsDue -
-              a.followUpsDue
-            );
-          }
-
-
-          if (
-            a.attemptsToday !==
-            b.attemptsToday
-          ) {
-            return (
-              b.attemptsToday -
-              a.attemptsToday
-            );
-          }
-
-
-          return a.employee
-            .localeCompare(
-              b.employee
-            );
-        }
-      );
-
-
-  const totals =
-    rows.reduce(
-      (
-        total,
-        row
-      ) => {
-
-        total.openAssigned +=
-          row.openAssigned;
-
-        total.attemptsToday +=
-          row.attemptsToday;
-
-        total.followUpsDue +=
-          row.followUpsDue;
-
-        total.scheduledToday +=
-          row.scheduledToday;
-
-        return total;
-      },
-      {
-        openAssigned: 0,
-        attemptsToday: 0,
-        followUpsDue: 0,
-        scheduledToday: 0,
-      }
-    );
-
-
-  return {
-    rows,
-    totals,
-  };
+  return finalizeDashboardEmployeeWorkload_(
+    groups
+  );
 }
 
 
@@ -26725,7 +27704,8 @@ function renderDashboardStatusBreakdown_(
 
 
 /**
- * Renders assigned-employee operational workload.
+ * Renders today's employee actions from ActivityLog
+ * actors. This is not current lead ownership.
  */
 function renderDashboardEmployeeWorkload_(
   sheet,
@@ -26769,7 +27749,7 @@ function renderDashboardEmployeeWorkload_(
     )
     .merge()
     .setValue(
-      "ASSIGNED EMPLOYEE WORKLOAD"
+      "EMPLOYEE ACTIONS TODAY"
     )
     .setFontSize(
       11
@@ -26796,10 +27776,8 @@ function renderDashboardEmployeeWorkload_(
   }
 
   const headerLabels = [
-    "Assigned Employee",
-    "Open Assigned",
+    "Employee",
     "Attempts Today",
-    "Follow-ups Due",
     "Scheduled Today",
   ];
 
@@ -26810,9 +27788,7 @@ function renderDashboardEmployeeWorkload_(
   visibleRows.forEach((row, rowIndex) => {
     const values = [
       row.employee,
-      row.openAssigned,
       row.attemptsToday,
-      row.followUpsDue,
       row.scheduledToday,
     ];
 
@@ -26824,9 +27800,7 @@ function renderDashboardEmployeeWorkload_(
   const totalRowIndex = 1 + maxRows;
   const totalValues = [
     "TOTAL",
-    workload.totals.openAssigned,
     workload.totals.attemptsToday,
-    workload.totals.followUpsDue,
     workload.totals.scheduledToday,
   ];
 
@@ -26838,7 +27812,9 @@ function renderDashboardEmployeeWorkload_(
     .getRange(startRow + 1, 1, tableRowCount, 10)
     .setValues(grid);
 
-  const pairColumns = [1, 3, 5, 7, 9];
+  const pairColumns = headerLabels.map(
+    (_, index) => 1 + (index * 2)
+  );
   const headerA1s = [];
   const dataNameA1s = [];
   const dataNumberA1s = [];
@@ -26930,7 +27906,7 @@ function renderDashboardEmployeeWorkload_(
     )
     .merge()
     .setValue(
-      "Operational workload only — not an employee leaderboard. Activity counts reflect events on leads currently assigned to each employee. Follow-ups Due = overdue + due today."
+      "Today's contact attempts and Scheduled moves, counted by the ActivityLog actor. This is not lead ownership."
     )
     .setFontSize(
       8
@@ -27918,15 +28894,6 @@ function resetDashboardFilters() {
 
   sheet
     .getRange(
-      "J4"
-    )
-    .setValue(
-      "All"
-    );
-
-
-  sheet
-    .getRange(
       PATIENT_DASHBOARD_CONTROLS
         .quickRangeCell
     )
@@ -28109,8 +29076,7 @@ function onEdit(
      */
     if (
       cell === "F4" ||
-      cell === "H4" ||
-      cell === "J4"
+      cell === "H4"
     ) {
       markDashboardFiltersPending_();
     }
@@ -28247,9 +29213,6 @@ function runDashboardFoundationCheck() {
 
     DashboardSource:
       "H4",
-
-    DashboardEmployee:
-      "J4",
   };
 
 
@@ -28292,6 +29255,21 @@ function runDashboardFoundationCheck() {
         }
       }
     );
+
+    if (
+      dashboard
+        .getRange("I4")
+        .getDisplayValue()
+        .trim() ===
+        "Assigned Employee" ||
+      dashboard
+        .getRange("J4")
+        .getDataValidation()
+    ) {
+      issues.push(
+        "Assigned Employee filter is still on the Dashboard."
+      );
+    }
   }
 
 
@@ -29334,21 +30312,9 @@ function runDashboardBusinessCheck() {
       analytics
         .workload
         .totals
-        .openAssigned,
-
-    "E90":
-      analytics
-        .workload
-        .totals
         .attemptsToday,
 
-    "G90":
-      analytics
-        .workload
-        .totals
-        .followUpsDue,
-
-    "I90":
+    "E90":
       analytics
         .workload
         .totals
@@ -29409,9 +30375,7 @@ function runDashboardBusinessCheck() {
           `Case Lost: ${analytics.caseLost.total}`,
           `Unrelated: ${analytics.unrelated.total}`,
           "",
-          `Open assigned: ${analytics.workload.totals.openAssigned}`,
           `Attempts today: ${analytics.workload.totals.attemptsToday}`,
-          `Follow-ups due: ${analytics.workload.totals.followUpsDue}`,
           `Scheduled today: ${analytics.workload.totals.scheduledToday}`,
         ].join(
           "\n"
@@ -29916,7 +30880,6 @@ function runDashboardPhase6CloseoutCheck() {
     "DashboardEndDate",
     "DashboardReason",
     "DashboardSource",
-    "DashboardEmployee",
   ];
 
 
@@ -30068,7 +31031,7 @@ function runDashboardPhase6CloseoutCheck() {
 
       [
         "A80",
-        "ASSIGNED EMPLOYEE WORKLOAD",
+        "EMPLOYEE ACTIONS TODAY",
       ],
     ];
 
@@ -31396,6 +32359,270 @@ function runPhase9SheetAccessCheck() {
 }
 
 
+/**
+ * Changes Config default_status only when it is
+ * exactly the legacy combined status.
+ */
+function normalizeLegacyDefaultStatus_() {
+  let current = "";
+
+  try {
+    current = String(
+      getConfigValue_("default_status") || ""
+    ).trim();
+  } catch (error) {
+    return {
+      changed: false,
+      missing: true,
+    };
+  }
+
+  if (current !== LEGACY_OPEN_FOLLOW_UP_STATUS_) {
+    return {
+      changed: false,
+      value: current,
+    };
+  }
+
+  setConfigValue_(
+    "default_status",
+    WORKFLOW_STATUS_OPEN_LEAD_
+  );
+
+  return {
+    changed: true,
+    value: WORKFLOW_STATUS_OPEN_LEAD_,
+  };
+}
+
+
+function normalizeLegacyDefaultStatus() {
+  const result = normalizeLegacyDefaultStatus_();
+
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const message = result.changed
+      ? "default_status is now Open Lead."
+      : (
+          result.missing
+            ? "default_status was not found. Nothing was changed."
+            : "default_status was left unchanged."
+        );
+
+    ui.alert(
+      "Open Lead Default Status",
+      message,
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    // Headless runs have no spreadsheet UI.
+  }
+
+  return result;
+}
+
+
+function planOpenFollowUpStatusMigration_() {
+  const table = getCanonicalSheetTable_("Leads");
+  const headers = table.headers;
+  const plan = {
+    legacyRows: 0,
+    toOpenLead: 0,
+    toFollowUp: 0,
+    changes: [],
+  };
+
+  table.values.forEach((rowValues, index) => {
+    const status = String(
+      rowValues[headers.status - 1] || ""
+    ).trim();
+
+    if (status !== LEGACY_OPEN_FOLLOW_UP_STATUS_) {
+      return;
+    }
+
+    if (isLeadRowArchived_(headers, rowValues)) {
+      return;
+    }
+
+    const leadId = String(
+      rowValues[headers.lead_id - 1] || ""
+    ).trim();
+
+    if (!leadId) {
+      return;
+    }
+
+    const nextStatus = legacyOpenFollowUpTargetStatus_(
+      rowValues[headers.next_follow_up_on - 1]
+    );
+
+    plan.legacyRows += 1;
+
+    if (nextStatus === WORKFLOW_STATUS_FOLLOW_UP_) {
+      plan.toFollowUp += 1;
+    } else {
+      plan.toOpenLead += 1;
+    }
+
+    plan.changes.push({
+      row: index + 2,
+      leadId,
+      nextStatus,
+    });
+  });
+
+  return plan;
+}
+
+
+function logOpenFollowUpStatusMigration_(label, counts) {
+  console.log(
+    `[STATUS_SPLIT_${label}] ${JSON.stringify({
+      legacyRows: counts.legacyRows || 0,
+      toOpenLead: counts.toOpenLead || 0,
+      toFollowUp: counts.toFollowUp || 0,
+      changed: counts.changed || 0,
+    })}`
+  );
+}
+
+
+/**
+ * Read-only count of current Leads rows still
+ * using the legacy combined status. Writes nothing.
+ */
+function previewOpenFollowUpStatusMigration() {
+  const plan = planOpenFollowUpStatusMigration_();
+  const counts = {
+    legacyRows: plan.legacyRows,
+    toOpenLead: plan.toOpenLead,
+    toFollowUp: plan.toFollowUp,
+    changed: 0,
+  };
+
+  logOpenFollowUpStatusMigration_("PREVIEW", counts);
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      "Open Lead / Follow Up Preview",
+      `Legacy rows: ${counts.legacyRows}\nWould become Open Lead: ${counts.toOpenLead}\nWould become Follow Up: ${counts.toFollowUp}\n\nNothing was changed.`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (error) {
+    // Headless runs have no spreadsheet UI.
+  }
+
+  return counts;
+}
+
+
+/**
+ * One-time split of current legacy statuses.
+ * Safe to run again: the second run changes nothing.
+ */
+function migrateOpenFollowUpStatuses() {
+  const plan = planOpenFollowUpStatusMigration_();
+
+  if (!plan.changes.length) {
+    const counts = {
+      legacyRows: 0,
+      toOpenLead: 0,
+      toFollowUp: 0,
+      changed: 0,
+    };
+
+    logOpenFollowUpStatusMigration_("MIGRATION", counts);
+
+    try {
+      SpreadsheetApp.getUi().alert(
+        "Open Lead / Follow Up Migration",
+        "No current legacy statuses were found. Nothing was changed.",
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+    } catch (error) {
+      // Headless runs have no spreadsheet UI.
+    }
+
+    return counts;
+  }
+
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("Leads");
+  const headers = getHeaderMap_("Leads");
+  const actor = {
+    email: "",
+    name: "System",
+  };
+  const now = new Date();
+  let toOpenLead = 0;
+  let toFollowUp = 0;
+
+  plan.changes.forEach((change) => {
+    const changed = writeLeadStatusChange_(
+      sheet,
+      change.row,
+      headers,
+      change.leadId,
+      now,
+      actor,
+      change.nextStatus,
+      "System migration: split legacy Open Lead / Follow Up status.",
+      "System",
+      true
+    );
+
+    if (!changed) {
+      return;
+    }
+
+    updateLeadAuditMetadata_(
+      sheet,
+      change.row,
+      headers,
+      now,
+      now,
+      actor
+    );
+
+    if (change.nextStatus === WORKFLOW_STATUS_FOLLOW_UP_) {
+      toFollowUp += 1;
+    } else {
+      toOpenLead += 1;
+    }
+  });
+
+  const changed = toOpenLead + toFollowUp;
+
+  if (changed > 0) {
+    invalidateCanonicalSheetTable_("Leads");
+    markBoardAndDashboardDirty_();
+  }
+
+  const counts = {
+    legacyRows: plan.legacyRows,
+    toOpenLead,
+    toFollowUp,
+    changed,
+  };
+
+  logOpenFollowUpStatusMigration_("MIGRATION", counts);
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      "Open Lead / Follow Up Migration",
+      `Changed: ${changed}\nOpen Lead: ${toOpenLead}\nFollow Up: ${toFollowUp}`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (error) {
+    // Headless runs have no spreadsheet UI.
+  }
+
+  return counts;
+}
+
+
 function onOpen() {
   SpreadsheetApp
     .getUi()
@@ -31516,8 +32743,36 @@ function onOpen() {
     )
     .addSeparator()
     .addItem(
+      "ADMIN: Refresh Board Static Header",
+      "setupBoardStaticHeader"
+    )
+    .addItem(
       "ADMIN: Setup Lead Archive Schema",
       "setupLeadArchiveSchema"
+    )
+    .addItem(
+      "ADMIN: Sync Workflow Status Validations",
+      "syncWorkflowStatusValidations"
+    )
+    .addItem(
+      "ADMIN: Normalize Open Lead Default",
+      "normalizeLegacyDefaultStatus"
+    )
+    .addItem(
+      "ADMIN: Preview Open/Follow Up Split",
+      "previewOpenFollowUpStatusMigration"
+    )
+    .addItem(
+      "ADMIN: Migrate Open/Follow Up Statuses",
+      "migrateOpenFollowUpStatuses"
+    )
+    .addItem(
+      "ADMIN: Install Scheduled Auto-Archive",
+      "installScheduledAutoArchiveTriggerFromMenu"
+    )
+    .addItem(
+      "ADMIN: Remove Scheduled Auto-Archive",
+      "removeScheduledAutoArchiveTriggerFromMenu"
     )
     .addItem(
       "ADMIN: Archive Maintenance",
@@ -37107,6 +38362,7 @@ const ARCHIVE_CONFIG_DEFAULTS_ = Object.freeze({
   archive_format_version: "1",
   archive_last_cold_storage_at: "",
   archive_last_cold_storage_bundle_id: "",
+  scheduled_auto_archive_days: "7",
 });
 
 
@@ -37319,15 +38575,12 @@ function evaluateArchiveEligibility_(status, workflowComplete) {
     };
   }
 
-  if (
-    status === "Scheduled" &&
-    workflowComplete !== true
-  ) {
-    return {
-      ok: false,
-      code: "SCHEDULED_NOT_COMPLETE",
-    };
-  }
+  /*
+   * Scheduled archival no longer depends on
+   * legacy workflow_complete. The argument
+   * remains so existing callers keep working.
+   */
+  void workflowComplete;
 
   return {
     ok: true,
@@ -37821,6 +39074,178 @@ function applyArchivedCheckboxValidation_(sheet) {
 }
 
 
+const WORKFLOW_STATUS_VALIDATION_TARGETS_ =
+  Object.freeze([
+    Object.freeze({
+      sheetName: "ActivityLog",
+      columns: Object.freeze([
+        "from_status",
+        "to_status",
+      ]),
+    }),
+    Object.freeze({
+      sheetName: "Leads",
+      columns: Object.freeze([
+        "status",
+      ]),
+    }),
+  ]);
+
+
+/*
+ * Reject invalid typed status values.
+ * setAllowInvalid(false) is the sheet rule
+ * "Reject input". true would only warn.
+ * The list is the audit-safe statuses, not
+ * a Lists range.
+ */
+function buildAuditSafeWorkflowStatusValidation_() {
+  return SpreadsheetApp
+    .newDataValidation()
+    .requireValueInList(
+      AUDIT_SAFE_WORKFLOW_STATUSES_.slice(),
+      true
+    )
+    .setAllowInvalid(false)
+    .build();
+}
+
+
+function applyWorkflowStatusValidationTarget_(
+  target,
+  summary
+) {
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName(target.sheetName);
+
+  if (!sheet) {
+    summary.ok = false;
+    summary.warnings.push(
+      `${target.sheetName} worksheet was not found. Workflow status validation was not applied there.`
+    );
+    return;
+  }
+
+  delete EXECUTION_CACHE_.headerMaps[target.sheetName];
+
+  const headers = getHeaderMap_(target.sheetName);
+  const maxRows = sheet.getMaxRows();
+
+  if (maxRows < 2) {
+    summary.ok = false;
+    summary.warnings.push(
+      `${target.sheetName} has no data rows. Workflow status validation was not applied.`
+    );
+    return;
+  }
+
+  target.columns.forEach((headerName) => {
+    const column = headers[headerName];
+
+    if (!column) {
+      summary.ok = false;
+      summary.warnings.push(
+        `${target.sheetName} is missing ${headerName}. Workflow status validation was not applied to that column.`
+      );
+      return;
+    }
+
+    sheet
+      .getRange(2, column, maxRows - 1, 1)
+      .setDataValidation(
+        buildAuditSafeWorkflowStatusValidation_()
+      );
+
+    summary.rules.push({
+      sheetName: target.sheetName,
+      header: headerName,
+      column,
+      rows: maxRows - 1,
+    });
+  });
+}
+
+
+/*
+ * Replaces ActivityLog from_status, ActivityLog
+ * to_status, and Leads status validation.
+ * Safe to rerun. Does not read or write
+ * patient values and does not use Lists.
+ */
+function applyWorkflowStatusValidations_() {
+  const summary = {
+    ok: true,
+    valuesChanged: 0,
+    statuses: AUDIT_SAFE_WORKFLOW_STATUSES_.slice(),
+    rules: [],
+    warnings: [],
+  };
+
+  WORKFLOW_STATUS_VALIDATION_TARGETS_.forEach((target) => {
+    try {
+      applyWorkflowStatusValidationTarget_(
+        target,
+        summary
+      );
+    } catch (error) {
+      summary.ok = false;
+      summary.warnings.push(
+        `${target.sheetName} workflow status validation was not applied.`
+      );
+    }
+  });
+
+  return summary;
+}
+
+
+function syncWorkflowStatusValidations() {
+  const result = applyWorkflowStatusValidations_();
+
+  console.log(
+    `[WORKFLOW_STATUS_VALIDATION] ${JSON.stringify({
+      ok: result.ok,
+      valuesChanged: result.valuesChanged,
+      statuses: result.statuses,
+      rules: result.rules,
+      warnings: result.warnings,
+    })}`
+  );
+
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const lines = [
+      result.ok
+        ? "Workflow status validation is in place."
+        : "Workflow status validation was only partly applied.",
+      "Validation rules were updated. No patient values were changed.",
+      `Allowed values: ${result.statuses.join(", ")}`,
+    ];
+
+    result.rules.forEach((rule) => {
+      lines.push(
+        `${rule.sheetName}.${rule.header}: ${rule.rows} rows`
+      );
+    });
+
+    result.warnings.forEach((warning) => {
+      lines.push(warning);
+    });
+
+    ui.alert(
+      "Workflow Status Validations",
+      lines.join("\n"),
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    // Headless runs have no spreadsheet UI.
+  }
+
+  return result;
+}
+
+
 function setupLeadArchiveSchema_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const leads = ss.getSheetByName("Leads");
@@ -37845,6 +39270,11 @@ function setupLeadArchiveSchema_() {
   const headersAdded = appendMissingSheetHeaders_(
     leads,
     LEAD_ARCHIVE_HEADER_NAMES_
+  ).concat(
+    appendMissingSheetHeaders_(
+      leads,
+      LEAD_CALLBACK_HEADER_NAMES_
+    )
   );
 
   try {
@@ -37865,6 +39295,19 @@ function setupLeadArchiveSchema_() {
   const warnings = [];
 
   try {
+    const validationSync =
+      applyWorkflowStatusValidations_();
+
+    validationSync.warnings.forEach((warning) => {
+      warnings.push(warning);
+    });
+  } catch (error) {
+    warnings.push(
+      "Workflow status validation was not applied."
+    );
+  }
+
+  try {
     ensureBackendGuardProtection_(index);
     index.hideSheet();
   } catch (error) {
@@ -37878,6 +39321,17 @@ function setupLeadArchiveSchema_() {
   }
 
   const configAdded = [];
+
+  try {
+    const defaultStatus =
+      normalizeLegacyDefaultStatus_();
+
+    if (defaultStatus.changed) {
+      configAdded.push("default_status");
+    }
+  } catch (error) {
+    warnings.push("Default lead status was not normalized.");
+  }
 
   Object.keys(ARCHIVE_CONFIG_DEFAULTS_).forEach((name) => {
     if (
@@ -38188,8 +39642,10 @@ function archiveLeadById_(leadId, options) {
   }
 
   const now = new Date();
-  const actor = getActorIdentity_();
+  const actor = settings.actor || getActorIdentity_();
   const reason = normalizeArchiveReason_(settings.reason);
+  const activitySource = settings.activitySource || "Employee";
+  const systemGenerated = settings.systemGenerated === true;
 
   setCellByHeader_(
     sheet,
@@ -38240,14 +39696,14 @@ function archiveLeadById_(leadId, options) {
     activityType: "lead_archived",
     actorEmail: actor.email,
     actorName: actor.name,
-    activitySource: "Employee",
+    activitySource,
     fieldName: "archived",
     previousValue: "FALSE",
     newValue: "TRUE",
     fromStatus: status,
     toStatus: status,
-    note: "",
-    systemGenerated: false,
+    note: settings.activityNote || "",
+    systemGenerated,
   });
   forgetLeadCaches_(cleanLeadId);
 
@@ -38272,6 +39728,299 @@ function archiveLeadById_(leadId, options) {
   );
 
   return finishArchiveOperation_(startedAt, payload);
+}
+
+
+function readScheduledAutoArchiveDays_() {
+  let raw = "";
+
+  try {
+    raw = getConfigValue_(SCHEDULED_AUTO_ARCHIVE_CONFIG_);
+  } catch (error) {
+    return null;
+  }
+
+  const text = String(raw == null ? "" : raw).trim();
+
+  if (!/^[0-9]+$/.test(text)) {
+    return null;
+  }
+
+  const days = Number(text);
+
+  if (!Number.isInteger(days) || days < 1 || days > 3650) {
+    return null;
+  }
+
+  return days;
+}
+
+
+function scheduledLeadAutoArchiveEligible_(
+  status,
+  archived,
+  scheduledDate,
+  now,
+  days,
+  timezone
+) {
+  if (archived === true) {
+    return false;
+  }
+
+  if (status !== "Scheduled") {
+    return false;
+  }
+
+  if (
+    !(scheduledDate instanceof Date) ||
+    isNaN(scheduledDate.getTime())
+  ) {
+    return false;
+  }
+
+  if (!(days >= 1)) {
+    return false;
+  }
+
+  const zone = timezone || getConfiguredTimezoneWithFallback_();
+  const scheduledKey = Utilities.formatDate(
+    scheduledDate,
+    zone,
+    "yyyy-MM-dd"
+  );
+  const todayKey = Utilities.formatDate(
+    now instanceof Date ? now : new Date(),
+    zone,
+    "yyyy-MM-dd"
+  );
+  const eligibleKey = addCalendarDaysToDateKey_(
+    scheduledKey,
+    days
+  );
+
+  if (!scheduledKey || !todayKey || !eligibleKey) {
+    return false;
+  }
+
+  return todayKey >= eligibleKey;
+}
+
+
+function listScheduledAutoArchiveTriggers_() {
+  const triggers = ScriptApp.getProjectTriggers();
+  const matches = [];
+
+  for (let index = 0; index < triggers.length; index += 1) {
+    if (
+      triggers[index].getHandlerFunction() ===
+      SCHEDULED_AUTO_ARCHIVE_HANDLER_
+    ) {
+      matches.push(triggers[index]);
+    }
+  }
+
+  return matches;
+}
+
+
+function installScheduledAutoArchiveTrigger() {
+  const existing = listScheduledAutoArchiveTriggers_();
+
+  for (let index = existing.length - 1; index >= 1; index -= 1) {
+    ScriptApp.deleteTrigger(existing[index]);
+  }
+
+  if (existing.length >= 1) {
+    return {
+      ok: true,
+      created: false,
+      handler: SCHEDULED_AUTO_ARCHIVE_HANDLER_,
+      count: 1,
+    };
+  }
+
+  ScriptApp.newTrigger(SCHEDULED_AUTO_ARCHIVE_HANDLER_)
+    .timeBased()
+    .everyDays(1)
+    .create();
+
+  return {
+    ok: true,
+    created: true,
+    handler: SCHEDULED_AUTO_ARCHIVE_HANDLER_,
+    count: 1,
+  };
+}
+
+
+function removeScheduledAutoArchiveTrigger() {
+  const existing = listScheduledAutoArchiveTriggers_();
+
+  for (let index = 0; index < existing.length; index += 1) {
+    ScriptApp.deleteTrigger(existing[index]);
+  }
+
+  return {
+    ok: true,
+    removed: existing.length,
+    handler: SCHEDULED_AUTO_ARCHIVE_HANDLER_,
+    count: 0,
+  };
+}
+
+
+function installScheduledAutoArchiveTriggerFromMenu() {
+  const result = installScheduledAutoArchiveTrigger();
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      "Scheduled Auto-Archive",
+      result.created
+        ? "Daily auto-archive trigger installed. It runs as this Workspace user."
+        : "A daily auto-archive trigger for this user is already installed.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (error) {
+    // Headless runs have no spreadsheet UI.
+  }
+
+  return result;
+}
+
+
+function removeScheduledAutoArchiveTriggerFromMenu() {
+  const result = removeScheduledAutoArchiveTrigger();
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      "Scheduled Auto-Archive",
+      `Removed ${result.removed} daily auto-archive trigger(s) owned by this user.`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (error) {
+    // Headless runs have no spreadsheet UI.
+  }
+
+  return result;
+}
+
+
+function archiveEligibleScheduledLeads_(days, now) {
+  const startedAt = Date.now();
+  const timezone = getConfiguredTimezoneWithFallback_();
+  const moment = now instanceof Date ? now : new Date();
+  const table = getCanonicalSheetTable_("Leads");
+
+  if (!leadArchiveSchemaReady_(table.headers)) {
+    return finishArchiveOperation_(startedAt, {
+      ok: false,
+      code: "SCHEMA_MISSING",
+      archivedCount: 0,
+    });
+  }
+
+  const headers = table.headers;
+  const eligibleIds = [];
+
+  table.values.forEach(rowValues => {
+    const leadId = readHeaderText_(headers, rowValues, "lead_id");
+
+    if (!leadId) {
+      return;
+    }
+
+    const eligible = scheduledLeadAutoArchiveEligible_(
+      readHeaderText_(headers, rowValues, "status"),
+      isLeadRowArchived_(headers, rowValues),
+      readHeaderValue_(headers, rowValues, "scheduled_date"),
+      moment,
+      days,
+      timezone
+    );
+
+    if (eligible) {
+      eligibleIds.push(leadId);
+    }
+  });
+
+  let archivedCount = 0;
+
+  eligibleIds.forEach(leadId => {
+    const result = archiveLeadById_(leadId, {
+      reason: `Automatically archived ${days} days after scheduled visit.`,
+      actor: {
+        email: "",
+        name: "System",
+      },
+      activitySource: "System",
+      systemGenerated: true,
+      activityNote: `Automatically archived ${days} days after scheduled visit.`,
+    });
+
+    if (result && result.ok && result.changed) {
+      archivedCount += 1;
+    }
+  });
+
+  return finishArchiveOperation_(startedAt, {
+    ok: true,
+    code: archivedCount ? "ARCHIVED" : "ELIGIBLE",
+    archivedCount,
+    changed: archivedCount > 0,
+  });
+}
+
+
+function archiveEligibleScheduledLeadsDaily() {
+  const startedAt = Date.now();
+  const days = readScheduledAutoArchiveDays_();
+
+  if (days == null) {
+    return finishArchiveOperation_(startedAt, {
+      ok: false,
+      code: "CONFIG_INVALID",
+      archivedCount: 0,
+    });
+  }
+
+  return withColdStorageLock_(() =>
+    archiveEligibleScheduledLeads_(days)
+  );
+}
+
+
+/**
+ * Status to write when an archived lead returns.
+ *
+ * Canonical archived_from_status values restore
+ * as stored. The legacy combined status maps to
+ * Follow Up only when next_follow_up_on is a Date.
+ * An empty result means the current status stays.
+ */
+function resolveUnarchiveStatus_(
+  priorStatus,
+  currentStatus,
+  nextFollowUpOn
+) {
+  const prior = String(priorStatus || "").trim();
+  const current = String(currentStatus || "").trim();
+
+  if (prior === LEGACY_OPEN_FOLLOW_UP_STATUS_) {
+    return legacyOpenFollowUpTargetStatus_(
+      nextFollowUpOn
+    );
+  }
+
+  if (
+    prior &&
+    prior !== current &&
+    ACTIVE_WORKFLOW_STATUSES_.indexOf(prior) >= 0
+  ) {
+    return prior;
+  }
+
+  return "";
 }
 
 
@@ -38335,21 +40084,25 @@ function unarchiveLeadById_(leadId) {
     .getRange(row, headers.archived_from_status)
     .getDisplayValue()
     .trim();
+  const nextFollowUpOn = headers.next_follow_up_on
+    ? sheet.getRange(row, headers.next_follow_up_on).getValue()
+    : "";
+  const restoredStatus = resolveUnarchiveStatus_(
+    priorStatus,
+    currentStatus,
+    nextFollowUpOn
+  );
   let finalStatus = currentStatus;
 
-  if (
-    priorStatus &&
-    priorStatus !== currentStatus &&
-    ARCHIVE_ELIGIBLE_STATUSES_.indexOf(priorStatus) >= 0
-  ) {
+  if (restoredStatus && restoredStatus !== currentStatus) {
     setCellByHeader_(
       sheet,
       row,
       headers,
       "status",
-      priorStatus
+      restoredStatus
     );
-    finalStatus = priorStatus;
+    finalStatus = restoredStatus;
   }
 
   const now = new Date();
@@ -41112,7 +42865,7 @@ function archiveSelectedBoardPatient() {
     const card = getSelectedPatientBoardCard_();
     const response = ui.prompt(
       "Archive Patient",
-      "Optional archive note. Scheduled leads must already be workflow-complete. Case Lost and Unrelated can be archived. Open leads stay on the Board.",
+      "Optional archive note. Scheduled, Case Lost, and Unrelated leads can be archived. Open leads stay on the Board.",
       ui.ButtonSet.OK_CANCEL
     );
 

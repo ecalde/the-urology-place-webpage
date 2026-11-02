@@ -43,11 +43,11 @@ export const URINARY_INCONTINENCE_STUDY_ELIGIBILITY: ClinicalStudyEligibility = 
   ],
 };
 
-export const RENAL_STUDY_ELIGIBILITY: ClinicalStudyEligibility = {
-  title: "Renal",
+export const HYPERTENSION_STUDY_ELIGIBILITY: ClinicalStudyEligibility = {
+  title: "Hypertension",
   requirements: [
-    "Kidney-related condition or hematuria requiring evaluation",
-    "Age 18 years or older",
+    "High blood pressure that remains above goal while taking blood pressure medication",
+    "Age requirements vary by study",
     "Willing and able to provide informed consent",
     "Meeting additional study-specific eligibility requirements",
   ],

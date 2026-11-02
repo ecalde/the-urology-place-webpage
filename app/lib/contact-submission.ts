@@ -16,7 +16,7 @@ function safeLine(s: string): string {
   return stripControlChars(s).replace(/\r\n/g, "\n");
 }
 
-/** Build the plain-text submission details used in emails/Trello card descriptions. */
+/** Plain-text submission details for the clinic staff notification email. */
 export function buildTrelloCardDescription(data: NormalizedContact): string {
   const lines = [
     `Name: ${safeLine(data.firstName)} ${safeLine(data.lastName)}`,

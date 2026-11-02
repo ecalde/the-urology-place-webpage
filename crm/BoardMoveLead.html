@@ -121,6 +121,33 @@
         resize: vertical;
       }
 
+      .choice-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .choice-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 34px;
+        margin: 0;
+        padding: 0 10px;
+        border: 1px solid #dadce0;
+        border-radius: 999px;
+        background: white;
+        color: #202124;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .choice-chip input {
+        width: auto;
+        height: auto;
+        margin: 0;
+      }
+
       .conditional {
         display: none;
       }
@@ -248,8 +275,12 @@
               Select Workflow Destination
             </option>
 
-            <option value="Open Lead / Follow Up">
-              Open Lead / Follow Up
+            <option value="Open Lead">
+              Open Lead
+            </option>
+
+            <option value="Follow Up">
+              Follow Up
             </option>
 
             <option value="Scheduled">
@@ -310,31 +341,31 @@
               Case Lost Reason
             </div>
 
-            <select id="move-case-lost-reason">
-
-              <option value="">
-                Select Case Lost Reason
-              </option>
-
+            <div
+              id="move-case-lost-reasons"
+              class="choice-picker"
+            >
               <? moveData.options.caseLostReasons.forEach(
                 function(reason) {
               ?>
 
-                <option
-                  value="<?= reason ?>"
-                  <? if (
-                    reason ===
-                    moveData.lostReason
-                  ) { ?>
-                    selected
-                  <? } ?>
-                >
-                  <?= reason ?>
-                </option>
+                <label class="choice-chip">
+                  <input
+                    type="checkbox"
+                    value="<?= reason ?>"
+                    <? if (
+                      moveData.lostReasons &&
+                      moveData.lostReasons.indexOf(reason) !== -1
+                    ) { ?>
+                      checked
+                    <? } ?>
+                    onchange="updateMoveCaseLostNote()"
+                  >
+                  <span><?= reason ?></span>
+                </label>
 
               <? }); ?>
-
-            </select>
+            </div>
 
           </div>
 
@@ -534,13 +565,45 @@
       }
 
 
+      function selectedMoveReasons() {
+        return Array.prototype.map.call(
+          document.querySelectorAll(
+            "#move-case-lost-reasons input:checked"
+          ),
+          function(input) {
+            return input.value;
+          }
+        );
+      }
+
+
+      function updateMoveCaseLostNote() {
+        const note = document.getElementById("move-note");
+        const help = document.getElementById("move-help");
+        const insuranceSelected =
+          selectedMoveReasons().indexOf("Insurance") >= 0;
+        const guidance = insuranceSelected
+          ? "List the patient's insurance if it is not accepted."
+          : "Explain case lost; list patient's insurance if unaccepted.";
+
+        if (note) {
+          note.placeholder = guidance;
+        }
+
+        if (help) {
+          help.textContent = insuranceSelected
+            ? guidance
+            : "Choose one or more Case Lost reasons. The note is optional.";
+        }
+      }
+
+
       function setMoveBusy(
         busy
       ) {
         [
           "move-target-status",
           "move-scheduled-date",
-          "move-case-lost-reason",
           "move-unrelated-type",
           "move-note",
           "move-submit",
@@ -555,6 +618,13 @@
               element.disabled =
                 Boolean(busy);
             }
+          }
+        );
+
+        Array.prototype.forEach.call(
+          document.querySelectorAll("#move-case-lost-reasons input"),
+          function(input) {
+            input.disabled = Boolean(busy);
           }
         );
 
@@ -641,18 +711,30 @@
 
 
         if (
-          target ===
-          "Open Lead / Follow Up"
+          target === "Open Lead" ||
+          target === "Follow Up"
         ) {
-          help.textContent =
-            current ===
-              "Open Lead / Follow Up"
-              ? (
-                  "This lead is already in the Open Lead / Follow Up lane."
-                )
-              : (
-                  "A reason is required when returning a lead to active follow-up."
-                );
+          if (current === target) {
+            help.textContent =
+              "This lead is already in the " +
+              target +
+              " lane.";
+          } else if (
+            current === "Scheduled" ||
+            current === "Case Lost" ||
+            current === "Unrelated"
+          ) {
+            help.textContent =
+              "A reason is required when returning a lead to " +
+              target +
+              ".";
+          } else if (target === "Follow Up") {
+            help.textContent =
+              "A callback date is optional for Follow Up.";
+          } else {
+            help.textContent =
+              "Moving to Open Lead keeps the patient history.";
+          }
         }
 
 
@@ -675,8 +757,7 @@
           target ===
           "Case Lost"
         ) {
-          help.textContent =
-            "Select the Case Lost reason. A workflow note is optional.";
+          updateMoveCaseLostNote();
         }
 
 
@@ -747,13 +828,14 @@
             .value
             .trim();
 
-        const reason =
-          document
-            .getElementById(
-              "move-case-lost-reason"
-            )
-            .value
-            .trim();
+        const reasons = Array.prototype.map.call(
+          document.querySelectorAll(
+            "#move-case-lost-reasons input:checked"
+          ),
+          function(input) {
+            return input.value;
+          }
+        );
 
         const unrelatedType =
           document
@@ -788,7 +870,7 @@
         if (
           targetStatus ===
             "Case Lost" &&
-          !reason
+          !reasons.length
         ) {
           setMoveMessage(
             "Select a Case Lost reason.",
@@ -814,14 +896,22 @@
 
 
         if (
-          targetStatus ===
-            "Open Lead / Follow Up" &&
-          current !==
-            "Open Lead / Follow Up" &&
+          (
+            targetStatus === "Open Lead" ||
+            targetStatus === "Follow Up"
+          ) &&
+          current !== targetStatus &&
+          (
+            current === "Scheduled" ||
+            current === "Case Lost" ||
+            current === "Unrelated"
+          ) &&
           !note
         ) {
           setMoveMessage(
-            "Enter a reason for moving this lead back to Open Lead / Follow Up.",
+            "Enter a reason for moving this lead back to " +
+              targetStatus +
+              ".",
             true
           );
 
@@ -949,7 +1039,7 @@
             {
               targetStatus,
               scheduledDateText,
-              reason,
+              reasons,
               unrelatedType,
               note,
             }

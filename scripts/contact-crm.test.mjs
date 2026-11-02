@@ -954,13 +954,21 @@ test("302 from Apps Script is followed with GET, not a second POST", async () =>
   }
 });
 
-test("route calls CRM only after the Trello failure return", () => {
+test("route requires CRM success before staff notification and does not call Trello", () => {
   const route = readFileSync(ROUTE_PATH, "utf8");
-  const trello = route.indexOf("await effects.sendTrelloBoardEmail");
+  const email = readFileSync(path.join(ROOT, "app/lib/contact-email.ts"), "utf8");
+  const crmCall = route.indexOf("await effects.ingestContactToCrm(normalized)");
   const failure = route.indexOf("status: 502");
-  const crmCall = route.indexOf("effects.ingestContactToCrm(normalized)");
-  assert.ok(trello !== -1 && failure !== -1 && crmCall !== -1);
-  assert.ok(trello < failure && failure < crmCall);
+  const notify = route.indexOf(
+    "await effects.sendContactNotificationEmail",
+  );
+  assert.ok(crmCall !== -1 && failure !== -1 && notify !== -1);
+  assert.ok(crmCall < failure && failure < notify);
+  assert.equal(route.includes("sendTrelloBoardEmail"), false);
+  assert.equal(route.includes("TRELLO_BOARD_EMAIL"), false);
+  assert.equal(route.includes("Promise.allSettled"), false);
+  assert.equal(email.includes("sendTrelloBoardEmail"), false);
+  assert.equal(email.includes("TRELLO_BOARD_EMAIL"), false);
   assert.match(
     route,
     /export async function POST\(request: Request\) \{\s*return handleContactPost\(request\);\s*\}/,
@@ -985,6 +993,8 @@ test("CRM secrets are not exposed as public env names", () => {
 
   const example = readFileSync(path.join(ROOT, ".env.example"), "utf8");
   assert.match(example, /^CRM_INGEST_ENABLED=false$/m);
+  assert.equal(example.toLowerCase().includes("trello"), false);
+  assert.equal(example.includes("TRELLO_BOARD_EMAIL"), false);
   assert.match(
     example,
     /^CRM_INGEST_SECRET=replace-with-apps-script-dev-secret$/m,

@@ -167,8 +167,8 @@ const NAV_ITEMS: NavItem[] = [
         href: "/clinical-research/bph-studies",
       },
       {
-        label: "Renal Studies",
-        href: "/clinical-research/renal-studies",
+        label: "Hypertension Studies",
+        href: "/clinical-research/hypertension-studies",
       },
     ],
   },

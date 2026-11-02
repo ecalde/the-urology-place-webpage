@@ -32,7 +32,7 @@ type SubmitStatus = "idle" | "loading" | "success" | "error";
 
 export type ContactFormFieldsProps = {
   idPrefix?: string;
-  /** Display page/service name for Trello (e.g. "Kidney Stones", "Men's Wellness"). */
+  /** Display page/service name stored with the lead (e.g. "Kidney Stones", "Men's Wellness"). */
   pageName: string;
   defaultAppointmentReason: AppointmentReasonOption;
   serviceName: string;

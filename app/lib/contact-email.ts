@@ -9,10 +9,6 @@ type SendContactNotificationEmailArgs = {
   contact: NormalizedContact;
 };
 
-type SendTrelloBoardEmailArgs = {
-  contact: NormalizedContact;
-};
-
 function getResendClient(): { resend: Resend; from: string } {
   const apiKey = process.env.RESEND_API_KEY?.trim() ?? "";
   const from = process.env.CONTACT_NOTIFICATION_FROM?.trim() ?? "";
@@ -83,22 +79,5 @@ export async function sendContactNotificationEmail({
     replyTo: contact.email,
     subject,
     text,
-  });
-}
-
-export async function sendTrelloBoardEmail({
-  contact,
-}: SendTrelloBoardEmailArgs): Promise<void> {
-  const to = process.env.TRELLO_BOARD_EMAIL?.trim() ?? "";
-
-  if (!to) {
-    throw new Error("TRELLO_BOARD_EMAIL not configured");
-  }
-
-  await sendResendTextEmail({
-    to,
-    replyTo: contact.email,
-    subject: buildTrelloCardName(contact),
-    text: buildTrelloCardDescription(contact),
   });
 }

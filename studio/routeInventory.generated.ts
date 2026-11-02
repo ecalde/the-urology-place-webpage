@@ -96,19 +96,19 @@ export const routeInventory: RouteInventoryEntry[] = [
     "sanityStatus": "hardcoded"
   },
   {
+    "path": "/clinical-research/hypertension-studies",
+    "title": "Hypertension Studies",
+    "group": "Clinical Research",
+    "kind": "static",
+    "sourceFile": "app/clinical-research/hypertension-studies/page.tsx",
+    "sanityStatus": "hardcoded"
+  },
+  {
     "path": "/clinical-research/prostate-cancer-studies",
     "title": "Prostate Cancer Studies",
     "group": "Clinical Research",
     "kind": "static",
     "sourceFile": "app/clinical-research/prostate-cancer-studies/page.tsx",
-    "sanityStatus": "hardcoded"
-  },
-  {
-    "path": "/clinical-research/renal-studies",
-    "title": "Renal Studies",
-    "group": "Clinical Research",
-    "kind": "static",
-    "sourceFile": "app/clinical-research/renal-studies/page.tsx",
     "sanityStatus": "hardcoded"
   },
   {
@@ -662,6 +662,11 @@ export const redirects: RedirectEntry[] = [
   {
     "source": "/clinical-research/overactive-bladder",
     "destination": "/clinical-research/urinary-incontinence-studies",
+    "permanent": true
+  },
+  {
+    "source": "/clinical-research/renal-studies",
+    "destination": "/clinical-research/hypertension-studies",
     "permanent": true
   },
   {

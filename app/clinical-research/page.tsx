@@ -5,7 +5,7 @@ export const metadata = pageMetadata({
   path: "/clinical-research",
   title: "Urology Clinical Trials in San Antonio",
   description:
-    "Clinical research at The Urology Place in San Antonio, including studies in prostate cancer, BPH, bladder cancer, kidney disease, and urinary incontinence.",
+    "Clinical research at The Urology Place in San Antonio, including studies in prostate cancer, BPH, bladder cancer, high blood pressure, and urinary incontinence.",
 });
 
 export default function ClinicalResearchPage() {

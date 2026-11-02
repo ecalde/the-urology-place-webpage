@@ -181,6 +181,33 @@
         height: auto;
       }
 
+      .choice-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .choice-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 32px;
+        margin: 0;
+        padding: 0 10px;
+        border: 1px solid #dadce0;
+        border-radius: 999px;
+        background: white;
+        color: #202124;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .choice-chip input {
+        width: auto;
+        height: auto;
+        margin: 0;
+      }
+
       .help {
         color: #80868b;
         font-size: 10px;
@@ -268,58 +295,6 @@
       ></div>
 
 
-      <!-- Assignment -->
-      <div class="card">
-
-        <div class="card-title">
-          Assignment
-        </div>
-
-        <div class="grid">
-
-          <select id="quick-assignment-select">
-
-            <option value="">
-              Unassigned
-            </option>
-
-            <? quick.options.assignees.forEach(
-              function(assignee) {
-            ?>
-
-              <option
-                value="<?= assignee ?>"
-                <? if (
-                  assignee ===
-                  quick.assignedTo
-                ) { ?>
-                  selected
-                <? } ?>
-              >
-                <?= assignee ?>
-              </option>
-
-            <? }); ?>
-
-          </select>
-
-          <div class="button-row">
-
-            <button
-              type="button"
-              id="quick-assignment-button"
-              onclick="saveQuickAssignment()"
-            >
-              Save Assignment
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
       <!-- Contact attempt -->
       <div class="card">
 
@@ -380,78 +355,27 @@
         </div>
 
 
-        <div class="grid two-column">
-
-          <select
-            id="quick-contact-method"
-            <?= quick.canRecordContactAttempt
-              ? ""
-              : "disabled"
-            ?>
-          >
-
-            <option value="">
-              Contact Method
-            </option>
-
-            <? quick.options.contactMethods.forEach(
-              function(method) {
-            ?>
-
-              <option value="<?= method ?>">
-                <?= method ?>
-              </option>
-
-            <? }); ?>
-
-          </select>
-
-
-          <select
-            id="quick-contact-outcome"
-            <?= quick.canRecordContactAttempt
-              ? ""
-              : "disabled"
-            ?>
-          >
-
-            <option value="">
-              Contact Outcome
-            </option>
-
-            <? quick.options.contactOutcomes.forEach(
-              function(outcome) {
-            ?>
-
-              <option value="<?= outcome ?>">
-                <?= outcome ?>
-              </option>
-
-            <? }); ?>
-
-          </select>
-
-        </div>
-
-
         <div
-          class="checkbox-row"
-          style="margin-top: 8px;"
+          id="quick-contact-methods"
+          class="choice-picker"
         >
+          <? quick.options.contactMethods.forEach(
+            function(method) {
+          ?>
 
-          <input
-            type="checkbox"
-            id="quick-contact-reached"
-            <?= quick.canRecordContactAttempt
-              ? ""
-              : "disabled"
-            ?>
-          >
+            <label class="choice-chip">
+              <input
+                type="checkbox"
+                value="<?= method ?>"
+                <?= quick.canRecordContactAttempt
+                  ? ""
+                  : "disabled"
+                ?>
+              >
+              <span><?= method ?></span>
+            </label>
 
-          <label for="quick-contact-reached">
-            Patient reached
-          </label>
-
+          <? }); ?>
         </div>
 
 
@@ -475,12 +399,11 @@
           ) { ?>
 
             Record a normal outreach attempt without
-            opening Patient Details.
+            opening Patient Details. Select one or more methods.
 
           <? } else { ?>
 
-            This workflow is complete. Reopen it before
-            recording another contact attempt.
+            Contact attempts are unavailable for this lead.
 
           <? } ?>
         </div>
@@ -552,8 +475,8 @@
 
             <? } else { ?>
 
-              Follow-up is available only for an incomplete
-              Open Lead / Follow Up workflow.
+              Follow-up is available for
+              Open Lead and Follow Up.
 
             <? } ?>
           </div>
@@ -704,7 +627,6 @@
         busy
       ) {
         [
-          "quick-assignment-button",
           "quick-contact-button",
           "quick-follow-up-save",
           "quick-follow-up-clear",
@@ -742,14 +664,6 @@
 
         document
           .getElementById(
-            "quick-assignment-select"
-          )
-          .value =
-            data.assignedTo || "";
-
-
-        document
-          .getElementById(
             "quick-attempt-count"
           )
           .textContent =
@@ -777,10 +691,14 @@
             "—";
 
 
+        Array.prototype.forEach.call(
+          document.querySelectorAll("#quick-contact-methods input"),
+          function(input) {
+            input.disabled = !data.canRecordContactAttempt;
+          }
+        );
+
         const contactIds = [
-          "quick-contact-method",
-          "quick-contact-outcome",
-          "quick-contact-reached",
           "quick-contact-note",
           "quick-contact-button",
         ];
@@ -807,10 +725,10 @@
           .textContent =
             data.canRecordContactAttempt
               ? (
-                  "Record a normal outreach attempt without opening Patient Details."
+                  "Record a normal outreach attempt without opening Patient Details. Select one or more methods."
                 )
               : (
-                  "This workflow is complete. Reopen it before recording another contact attempt."
+                  "Contact attempts are unavailable for this lead."
                 );
 
 
@@ -869,7 +787,7 @@
                   )
                 )
               : (
-                  "Follow-up is available only for an incomplete Open Lead / Follow Up workflow."
+                  "Follow-up is available for Open Lead and Follow Up."
                 );
       }
 
@@ -922,65 +840,15 @@
       }
 
 
-      function saveQuickAssignment() {
-        const assignedTo =
-          document
-            .getElementById(
-              "quick-assignment-select"
-            )
-            .value
-            .trim();
-
-
-        setQuickBusy(
-          true
-        );
-
-        setQuickMessage(
-          "Saving assignment...",
-          false
-        );
-
-
-        google.script.run
-          .withSuccessHandler(
-            handleQuickSuccess
-          )
-          .withFailureHandler(
-            handleQuickFailure
-          )
-          .boardQuickAssignLead(
-            getQuickLeadId(),
-            {
-              assignedTo,
-            }
-          );
-      }
-
-
       function saveQuickContactAttempt() {
-        const method =
-          document
-            .getElementById(
-              "quick-contact-method"
-            )
-            .value
-            .trim();
-
-        const outcome =
-          document
-            .getElementById(
-              "quick-contact-outcome"
-            )
-            .value
-            .trim();
-
-        const reached =
-          document
-            .getElementById(
-              "quick-contact-reached"
-            )
-            .checked;
+        const contactMethods = Array.prototype.map.call(
+          document.querySelectorAll(
+            "#quick-contact-methods input:checked"
+          ),
+          function(input) {
+            return input.value;
+          }
+        );
 
         const note =
           document
@@ -991,19 +859,9 @@
             .trim();
 
 
-        if (!method) {
+        if (!contactMethods.length) {
           setQuickMessage(
-            "Select a contact method.",
-            true
-          );
-
-          return;
-        }
-
-
-        if (!outcome) {
-          setQuickMessage(
-            "Select a contact outcome.",
+            "Select at least one contact method.",
             true
           );
 
@@ -1024,24 +882,14 @@
         google.script.run
           .withSuccessHandler(
             function(result) {
-
-              document
-                .getElementById(
-                  "quick-contact-method"
-                )
-                .value = "";
-
-              document
-                .getElementById(
-                  "quick-contact-outcome"
-                )
-                .value = "";
-
-              document
-                .getElementById(
-                  "quick-contact-reached"
-                )
-                .checked = false;
+              Array.prototype.forEach.call(
+                document.querySelectorAll(
+                  "#quick-contact-methods input"
+                ),
+                function(input) {
+                  input.checked = false;
+                }
+              );
 
               document
                 .getElementById(
@@ -1061,15 +909,7 @@
           .boardQuickRecordContactAttempt(
             getQuickLeadId(),
             {
-              contactMethod:
-                method,
-
-              contactOutcome:
-                outcome,
-
-              reachedPatient:
-                reached,
-
+              contactMethods,
               note,
             }
           );
