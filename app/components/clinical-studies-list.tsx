@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ClinicalStudiesContactSection } from "@/app/components/clinical-studies-contact-section";
 import {
@@ -20,6 +21,27 @@ type ClinicalStudiesListProps = {
   eligibility: ClinicalStudyEligibility;
   showContactSection?: boolean;
 };
+
+const RESEARCH_CONTACT_HREF = "/patient-resources/contact-us";
+const RESEARCH_CONTACT_LABEL = "Contact our research team";
+
+function StudyClosing({ text }: { text: string }) {
+  const start = text.indexOf(RESEARCH_CONTACT_LABEL);
+  if (start === -1) return <p>{text}</p>;
+
+  return (
+    <p>
+      {text.slice(0, start)}
+      <Link
+        href={RESEARCH_CONTACT_HREF}
+        className="font-semibold text-blue-700 underline decoration-blue-400 underline-offset-2 transition hover:text-blue-800"
+      >
+        {RESEARCH_CONTACT_LABEL}
+      </Link>
+      {text.slice(start + RESEARCH_CONTACT_LABEL.length)}
+    </p>
+  );
+}
 
 function filterCount(studies: ClinicalStudy[], filter: ClinicalStudyFilter): number {
   return studies.filter((study) => matchesClinicalStudyFilter(study, filter)).length;
@@ -155,7 +177,7 @@ export function ClinicalStudiesList({
                     {section.body}
                   </p>
                 ))}
-                {study.closing ? <p>{study.closing}</p> : null}
+                {study.closing ? <StudyClosing text={study.closing} /> : null}
               </div>
               {study.nct ? (
                 <p className="mt-6 border-t border-slate-100 pt-5">

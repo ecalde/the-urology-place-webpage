@@ -13,7 +13,7 @@ export const metadata = pageMetadata({
   path: "/clinical-research/urinary-incontinence-studies",
   title: "Urinary Incontinence Clinical Trials in San Antonio",
   description:
-    "Urinary incontinence clinical trials at The Urology Place in San Antonio for bladder control and overactive bladder research.",
+    "Urge incontinence and bladder-control research at The Urology Place in San Antonio, including a study of the Revi ankle implant.",
 });
 
 export default function UrinaryIncontinenceStudiesPage() {

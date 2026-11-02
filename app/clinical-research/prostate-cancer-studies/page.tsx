@@ -10,7 +10,7 @@ export const metadata = pageMetadata({
   path: "/clinical-research/prostate-cancer-studies",
   title: "Prostate Cancer Clinical Trials in San Antonio",
   description:
-    "Prostate cancer clinical trials at The Urology Place in San Antonio. See current studies and how to ask about eligibility.",
+    "Prostate cancer clinical trials in San Antonio, including TULSA-PRO, PSMA PET scans, PYLARIFY, and water vapor ablation. Ask which studies are enrolling.",
 });
 
 export default function ProstateCancerStudiesPage() {
