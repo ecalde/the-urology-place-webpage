@@ -17513,8 +17513,14 @@ function buildBoardLaneCountText_(
     if (
       metrics.untouched > 0
     ) {
+      const untouchedLabel =
+        lane.status ===
+          "Open Lead"
+          ? "unopened"
+          : "untouched";
+
       parts.push(
-        `${metrics.untouched} untouched`
+        `${metrics.untouched} ${untouchedLabel}`
       );
     }
   }
