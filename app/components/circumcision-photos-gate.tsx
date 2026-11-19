@@ -97,7 +97,7 @@ export function CircumcisionPhotosGate() {
               Leave this page
             </Link>
             <button type="button" onClick={() => void continueToPhotos()} className={BTN_PRIMARY_LARGE}>
-              I am 18 or older — view photos
+              I am 18 or older, proceed to view photos
             </button>
           </div>
         </div>

@@ -21,6 +21,10 @@ const YOUTUBE_VIDEO_ID = "XcDnlQSicfA";
 const YOUTUBE_TITLE =
   "Dr. Naveen Kella discusses the MT-08 clinical trial comparing iTind and UroLift";
 
+const ALPFA_VIDEO_ID = "vfKa7X2Z6_Y";
+const ALPFA_VIDEO_TITLE =
+  "The Alpha Grail: pulsed field ablation for benign prostatic hyperplasia";
+
 function bphStageImageSrc(path: string) {
   return encodeURI(path).replace(/\+/g, "%2B");
 }
@@ -57,7 +61,25 @@ export default function BphStudiesPage() {
 
         <div className="border-t border-slate-200 bg-slate-50/50">
           <div className="mx-auto max-w-6xl px-6 py-16 md:py-20">
-            <div className="max-w-3xl">
+            <div className="mx-auto max-w-4xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">
+                ALPFA study
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+                How the ALPFA GRAIL system is designed to work
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-slate-600 md:text-lg">
+                This video explains the investigational pulsed field ablation
+                approach being studied in the ALPFA trial for benign prostatic
+                hyperplasia. The system is still under study and is not an
+                approved treatment.
+              </p>
+              <div className="mt-8 overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200">
+                <YouTubeEmbed videoId={ALPFA_VIDEO_ID} title={ALPFA_VIDEO_TITLE} />
+              </div>
+            </div>
+
+            <div className="mt-16 max-w-3xl">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">
                 Understanding BPH
               </p>
