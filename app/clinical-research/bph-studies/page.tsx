@@ -71,8 +71,7 @@ export default function BphStudiesPage() {
               <p className="mt-4 text-base leading-relaxed text-slate-600 md:text-lg">
                 This video explains the investigational pulsed field ablation
                 approach being studied in the ALPFA trial for benign prostatic
-                hyperplasia. The system is still under study and is not an
-                approved treatment.
+                hyperplasia.
               </p>
               <div className="mt-8 overflow-hidden rounded-2xl shadow-md ring-1 ring-slate-200">
                 <YouTubeEmbed videoId={ALPFA_VIDEO_ID} title={ALPFA_VIDEO_TITLE} />
