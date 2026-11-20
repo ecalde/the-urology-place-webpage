@@ -12,7 +12,7 @@ export const metadata = pageMetadata({
   path: "/women",
   title: "Women's Urology in San Antonio",
   description:
-    "Women's urologic and pelvic health care at The Urology Place in San Antonio, including hematuria, Emsella for incontinence, hormone replacement therapy, and kidney stones.",
+    "Women's urologic and pelvic health care at The Urology Place in San Antonio, including hematuria, Emsella and Bulkamid for incontinence, hormone replacement therapy, and kidney stones.",
 });
 
 const SERVICES = [
@@ -27,6 +27,12 @@ const SERVICES = [
     href: "/women/emsella-for-incontinence",
     description:
       "A non-invasive treatment that strengthens the pelvic floor to help with urgency, frequency, and bladder leaks.",
+  },
+  {
+    title: "Bulkamid for Stress Incontinence",
+    href: "/women/bulkamid-for-stress-incontinence",
+    description:
+      "A one-time, 10–15 minute in-office procedure for stress urinary incontinence. No surgery, no mesh, and no incisions.",
   },
   {
     title: "Hormone Replacement Therapy",

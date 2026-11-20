@@ -77,6 +77,7 @@ const PAGE_TO_DEFAULT_REASON: Record<string, AppointmentReasonOption> = {
   "kidney stones": "Kidney Stones",
   "prostate cancer": "Prostate Cancer",
   "emsella for incontinence": "Urinary Incontinence",
+  "bulkamid for stress incontinence": "Urinary Incontinence",
   "enlarged prostate": "Enlarged Prostate",
   vasectomy: "Vasectomy",
   "hormone replacement therapy": "Hormone Replacement Therapy",

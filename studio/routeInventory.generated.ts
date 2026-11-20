@@ -611,6 +611,14 @@ export const routeInventory: RouteInventoryEntry[] = [
     "sanityStatus": "hardcoded"
   },
   {
+    "path": "/women/bulkamid-for-stress-incontinence",
+    "title": "Bulkamid For Stress Incontinence",
+    "group": "Women",
+    "kind": "static",
+    "sourceFile": "app/women/bulkamid-for-stress-incontinence/page.tsx",
+    "sanityStatus": "hardcoded"
+  },
+  {
     "path": "/women/emsella-for-incontinence",
     "title": "Emsella For Incontinence",
     "group": "Women",

@@ -140,6 +140,10 @@ const NAV_ITEMS: NavItem[] = [
       { label: "Hematuria", href: "/women/hematuria" },
       { label: "Emsella for Incontinence", href: "/women/emsella-for-incontinence" },
       {
+        label: "Bulkamid for Stress Incontinence",
+        href: "/women/bulkamid-for-stress-incontinence",
+      },
+      {
         label: "Hormone Replacement Therapy",
         href: "/women/hormone-replacement-therapy",
       },
@@ -315,9 +319,7 @@ export function Navbar() {
                   <span>{item.label}</span>
                   <span className="text-xs text-slate-500">▾</span>
                 </button>
-                <div
-                  className="invisible absolute left-0 top-full mt-0 rounded-xl border border-slate-200 bg-white pt-2 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
-                >
+                <div className="absolute left-0 top-full z-50 mt-0 hidden rounded-xl border border-slate-200 bg-white pt-2 shadow-lg group-hover:block">
                   <div className="relative flex">
                     {/* Left panel */}
                     <div className="w-72 py-2">
@@ -391,12 +393,9 @@ export function Navbar() {
 
                       return (
                         <>
+                          {showFlyout ? (
                           <div
-                            className={`absolute left-[18rem] w-80 rounded-xl border border-slate-200 bg-white py-2 shadow-lg transition-all duration-200 ease-out ${
-                              showFlyout
-                                ? "pointer-events-auto translate-x-0 opacity-100"
-                                : "pointer-events-none translate-x-4 opacity-0"
-                            }`}
+                            className="pointer-events-auto absolute left-[18rem] w-80 rounded-xl border border-slate-200 bg-white py-2 shadow-lg"
                             style={{ top: activeDesktopFlyout?.topPx ?? 0 }}
                           >
                             {flyoutItems.map((grand) => {
@@ -441,13 +440,11 @@ export function Navbar() {
                               );
                             })}
                           </div>
+                          ) : null}
 
+                          {showNestedFlyout ? (
                           <div
-                            className={`absolute left-[38rem] w-80 rounded-xl border border-slate-200 bg-white py-2 shadow-lg transition-all duration-200 ease-out ${
-                              showNestedFlyout
-                                ? "pointer-events-auto translate-x-0 opacity-100"
-                                : "pointer-events-none translate-x-4 opacity-0"
-                            }`}
+                            className="pointer-events-auto absolute left-[38rem] w-80 rounded-xl border border-slate-200 bg-white py-2 shadow-lg"
                             style={{ top: activeDesktopNestedFlyout?.topPx ?? 0 }}
                           >
                             {nestedFlyoutItems.map((great) => (
@@ -460,6 +457,7 @@ export function Navbar() {
                               </Link>
                             ))}
                           </div>
+                          ) : null}
                         </>
                       );
                     })()}

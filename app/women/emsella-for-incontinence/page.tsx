@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ContactFormTemplate } from "@/app/components/contact-form-template";
 import { EmsellaFaqAccordion } from "@/app/components/emsella-faq-accordion";
 import { YouTubeEmbed } from "@/app/components/youtube-embed";
@@ -334,6 +335,39 @@ export default function EmsellaForIncontinencePage() {
           <div className="mx-auto max-w-4xl px-6 py-16 md:py-20">
             <EmsellaFaqAccordion />
           </div>
+        </div>
+      </section>
+
+      {/* Approved cross-link: after the FAQ and before the contact form. */}
+      <section
+        className="border-t border-slate-200 bg-slate-50/90"
+        aria-labelledby="emsella-bulkamid-crosslink-heading"
+      >
+        <div className="mx-auto max-w-4xl px-6 py-16 md:py-20">
+          <h2
+            id="emsella-bulkamid-crosslink-heading"
+            className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl"
+          >
+            When Leaks Need a Stronger Fix: Bulkamid
+          </h2>
+          <p className="mt-6 text-base leading-relaxed text-slate-700 md:text-lg">
+            Emsella strengthens the pelvic floor from the outside. For stress
+            leakage that needs a stronger fix,{" "}
+            <strong className="font-semibold text-slate-900">Bulkamid</strong>{" "}
+            is a one-time, 10–15 minute in-office procedure: a soft gel is
+            injected into the wall of the urethra so it can close more tightly.
+            No surgery, no mesh, no incisions — and most patients are back to
+            normal activities within a day or two. Bulkamid is commonly covered
+            by insurance when medically appropriate.
+          </p>
+          <p className="mt-6">
+            <Link
+              href="/women/bulkamid-for-stress-incontinence"
+              className="font-semibold text-blue-700 underline decoration-blue-400 underline-offset-2 hover:text-blue-800"
+            >
+              Learn more about Bulkamid →
+            </Link>
+          </p>
         </div>
       </section>
 
