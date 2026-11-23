@@ -36,6 +36,14 @@ const SANITY_STATUS = {
     status: "managed",
     note: "Article, metadata, author, related posts and CTA are Sanity-driven.",
   },
+  "/men/[...slug]": {
+    status: "managed",
+    note: "Published Men treatment pages. Hardcoded Men pages stay on their own files.",
+  },
+  "/women/[...slug]": {
+    status: "managed",
+    note: "Published Women treatment pages. Hardcoded Women pages stay on their own files.",
+  },
 };
 
 /** Ordered display groups. Anything unmatched falls into "Other". */
@@ -96,7 +104,13 @@ function deriveTitle(routePath) {
   const segments = routePath.split("/").filter(Boolean);
   const last = segments[segments.length - 1];
 
-  if (last.startsWith("[")) return "Blog Post (dynamic)";
+  if (last.startsWith("[")) {
+    const section = segments[0];
+    if ((section === "men" || section === "women") && last.includes("slug")) {
+      return "Treatment page (dynamic)";
+    }
+    return "Blog Post (dynamic)";
+  }
 
   if (last === "contact-us" && segments.length >= 2) {
     const parent = segments[segments.length - 2];

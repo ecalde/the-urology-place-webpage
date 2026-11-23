@@ -5,6 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { THORNE_DISPENSARY_URL } from "@/app/lib/external-links";
+import {
+  mergeTreatmentNav,
+  type TreatmentNavLink,
+} from "@/app/lib/treatment-nav";
 
 type NavNode = {
   label: string;
@@ -217,9 +221,16 @@ function prioritizeNewNavItems(items: readonly NavItem[]): NavItem[] {
 }
 
 // Ensures any tab with the "New" badge appears at the top of its subsection list.
-const NAV_ITEMS_SORTED = prioritizeNewNavItems(NAV_ITEMS);
+export const NAV_ITEMS_SORTED = prioritizeNewNavItems(NAV_ITEMS);
 
-export function Navbar() {
+const NO_TREATMENT_LINKS: TreatmentNavLink[] = [];
+
+export function Navbar({
+  treatmentLinks = NO_TREATMENT_LINKS,
+}: {
+  treatmentLinks?: readonly TreatmentNavLink[];
+}) {
+  const navItems = mergeTreatmentNav(NAV_ITEMS_SORTED, treatmentLinks);
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMobileSection, setExpandedMobileSection] = useState<string | null>(null);
@@ -299,7 +310,7 @@ export function Navbar() {
 
         {/* Desktop Nav */}
         <nav className="hidden h-10 flex-nowrap items-center gap-3 text-sm font-medium text-slate-700 lg:ml-6 lg:mr-6 lg:flex xl:gap-4">
-          {NAV_ITEMS_SORTED.map((item) =>
+          {navItems.map((item) =>
             item.children ? (
               <div
                 key={item.label}
@@ -551,7 +562,7 @@ export function Navbar() {
 
           <nav className="flex-1 overflow-y-auto px-4 py-4 text-sm">
             <ul className="space-y-2">
-              {NAV_ITEMS_SORTED.map((item) => (
+              {navItems.map((item) => (
                 <li key={item.label} className="border-b border-slate-100 pb-2 last:border-b-0">
                   {item.children ? (
                     <div>

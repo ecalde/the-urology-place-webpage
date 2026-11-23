@@ -4,6 +4,7 @@ import postType from './postType'
 import privacyPolicyType from './privacyPolicyType'
 import teamCategoryType from './teamCategoryType'
 import teamMemberType from './teamMemberType'
+import treatmentPageSchemaTypes from './treatmentPage'
 
 export const schemaTypes = [
   authorType,
@@ -12,4 +13,5 @@ export const schemaTypes = [
   privacyPolicyType,
   teamCategoryType,
   teamMemberType,
+  ...treatmentPageSchemaTypes,
 ]

@@ -18,6 +18,10 @@
     "test:workflow-status-validation": "node scripts/workflow-status-validation.test.mjs",
     "test:contact-crm": "node scripts/contact-crm.test.mjs",
     "test:contact-route": "node scripts/contact-route.test.mjs",
+    "test:treatment-schema": "node --import tsx scripts/treatment-page-schema.test.ts",
+    "test:treatment-template": "node --import tsx scripts/treatment-page-template.test.tsx",
+    "test:treatment-revalidate": "node --import tsx scripts/treatment-page-revalidate.test.ts",
+    "test:treatment-nav": "node --import tsx scripts/treatment-nav.test.ts",
     "test:contact-crm:dev": "node scripts/contact-crm-dev-check.mjs",
     "test:contact-crm:prod-smoke": "node scripts/contact-crm-prod-smoke.mjs --self-test"
   },

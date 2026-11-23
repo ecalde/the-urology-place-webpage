@@ -1,4 +1,6 @@
 import type { MetadataRoute } from "next";
+import { getTreatmentNav } from "@/app/lib/treatment-nav-load";
+import { treatmentSitemapPaths } from "@/app/lib/treatment-nav";
 import { client } from "@/lib/sanity";
 import { redirects, routeInventory } from "@/studio/routeInventory.generated";
 
@@ -57,5 +59,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  return [...staticEntries, ...blogEntries];
+  const excludedPaths = new Set<string>([
+    ...routeInventory
+      .filter((entry) => entry.kind === "static")
+      .map((entry) => entry.path),
+    ...EXCLUDED_PATHS,
+  ]);
+  const treatmentEntries: MetadataRoute.Sitemap = treatmentSitemapPaths(
+    await getTreatmentNav(),
+    excludedPaths,
+  ).map((treatmentPath) => ({
+    url: `${SITE_URL}${treatmentPath}`,
+  }));
+
+  return [...staticEntries, ...blogEntries, ...treatmentEntries];
 }

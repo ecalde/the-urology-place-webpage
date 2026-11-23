@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "./components/navbar";
+import { SiteNavbar } from "./components/site-navbar";
 import { Footer } from "./components/footer";
 import {
   DEFAULT_DESCRIPTION,
@@ -62,7 +62,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-white text-slate-900 antialiased`}
       >
-        <Navbar />
+        <SiteNavbar />
         {/* bg-white comes from body; omit here so page-level fixed backgrounds (e.g. Robotic Prostatectomy) are visible */}
         <main className="min-h-screen">{children}</main>
         <Footer />

@@ -1,5 +1,9 @@
 import { ContactFormFields } from "@/app/components/contact-form-fields";
-import { getDefaultAppointmentReasonForPage } from "@/app/lib/contact-form-defaults";
+import {
+  APPOINTMENT_REASON_OPTIONS,
+  getDefaultAppointmentReasonForPage,
+  type AppointmentReasonOption,
+} from "@/app/lib/contact-form-defaults";
 import {
   HERO_FORM_SECTION_HEADING,
   HERO_SUBTITLE_ON_LIGHT,
@@ -32,6 +36,12 @@ export type ContactFormTemplateProps = {
   variant?: "page" | "embedded";
   /** Optional prefix for form control IDs to avoid duplicates. */
   idPrefix?: string;
+  /**
+   * Listed appointment reason to select when the form opens.
+   * When this is omitted, or is not one of the listed reasons, the page name
+   * still chooses the reason. Visitors can change the selection, including Other.
+   */
+  defaultAppointmentReason?: AppointmentReasonOption;
 };
 
 export function ContactFormTemplate({
@@ -42,9 +52,16 @@ export function ContactFormTemplate({
   sourcePath,
   variant = "page",
   idPrefix,
+  defaultAppointmentReason: requestedAppointmentReason,
 }: ContactFormTemplateProps) {
   const heading = headingOverride ?? `Contact Us For ${pageName}`;
-  const defaultAppointmentReason = getDefaultAppointmentReasonForPage(pageName);
+  const defaultAppointmentReason =
+    requestedAppointmentReason &&
+    (APPOINTMENT_REASON_OPTIONS as readonly string[]).includes(
+      requestedAppointmentReason,
+    )
+      ? requestedAppointmentReason
+      : getDefaultAppointmentReasonForPage(pageName);
 
   const content = (
     <div>

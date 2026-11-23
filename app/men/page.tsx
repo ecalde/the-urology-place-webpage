@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { BTN_MAKE_APPOINTMENT_HERO } from "@/app/lib/button-styles";
+import { getTreatmentNav } from "@/app/lib/treatment-nav-load";
+import { treatmentServiceCards } from "@/app/lib/treatment-nav";
 import {
   HERO_AFTER_SLIDE_BASE,
   HERO_IMAGE_SECTION,
@@ -84,7 +86,16 @@ const SERVICES = [
   },
 ] as const;
 
-export default function MenPage() {
+export default async function MenPage() {
+  const services = [
+    ...SERVICES,
+    ...treatmentServiceCards(
+      "men",
+      await getTreatmentNav(),
+      new Set(SERVICES.map((service) => service.href)),
+    ),
+  ];
+
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <section
@@ -134,7 +145,7 @@ export default function MenPage() {
             Men&apos;s services
           </h2>
           <ul className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {SERVICES.map((service) => (
+            {services.map((service) => (
               <li key={service.href}>
                 <Link
                   href={service.href}

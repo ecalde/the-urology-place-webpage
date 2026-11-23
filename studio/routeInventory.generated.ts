@@ -152,6 +152,15 @@ export const routeInventory: RouteInventoryEntry[] = [
     "sanityStatus": "hardcoded"
   },
   {
+    "path": "/men/[...slug]",
+    "title": "Treatment page (dynamic)",
+    "group": "Men",
+    "kind": "dynamic",
+    "sourceFile": "app/men/[...slug]/page.tsx",
+    "sanityStatus": "managed",
+    "sanityNote": "Published Men treatment pages. Hardcoded Men pages stay on their own files."
+  },
+  {
     "path": "/men/adult-circumcision",
     "title": "Adult Circumcision",
     "group": "Men",
@@ -609,6 +618,15 @@ export const routeInventory: RouteInventoryEntry[] = [
     "kind": "static",
     "sourceFile": "app/women/page.tsx",
     "sanityStatus": "hardcoded"
+  },
+  {
+    "path": "/women/[...slug]",
+    "title": "Treatment page (dynamic)",
+    "group": "Women",
+    "kind": "dynamic",
+    "sourceFile": "app/women/[...slug]/page.tsx",
+    "sanityStatus": "managed",
+    "sanityNote": "Published Women treatment pages. Hardcoded Women pages stay on their own files."
   },
   {
     "path": "/women/bulkamid-for-stress-incontinence",
